@@ -722,7 +722,7 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
   # Rename to moduleColors
   moduleColors = mergedColors
   # Construct numerical labels corresponding to the colors
-  colorOrder = c("grey", WGCNA::standardColors(400))
+  colorOrder = c("grey", WGCNA::standardColors(400) )
   moduleLabels = match(moduleColors, colorOrder)-1
   MEs = mergedMEs
   tb2 <- table(moduleColors)[order(table(moduleColors))]
