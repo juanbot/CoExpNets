@@ -914,7 +914,7 @@ getGProfilerOnNet <- function(net.file=snig.exonic.net.file,
     all.genes[[module]] <- genes
   }
 
-  go <- gprofiler(all.genes,
+  go <- gProfileR::gprofiler(all.genes,
                   correction_method=correction.method,
                   #custom_bg=background,
                   src_filter=filter,
