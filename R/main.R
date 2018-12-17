@@ -71,19 +71,21 @@ plotMDS = function(rpkms.net,path,covs,covvars,label,n.mds=-1){
 #'
 #' @examples
 getDownstreamNetwork = function(tissue="mytissue",
-                                      n.iterations=50,	#Number of iterations for k-means, 50 recommended
-                                      expr.data, 	#We expect a file name pointing to a dataframe (RDS format) with
-                                      #genes in columns and samples in rows. Each gene name appears
-                                      #in the column name. Better to use gene symbols as names
-                                      beta=-1,	#If -1 the algorithm will seek for the best beta
-                                      job.path="~/tmp/",	#Where to store all results
-                                      min.cluster.size=30,		#Minimum number of genes to form a cluster
-                                      net.type="signed",			#Leave it like that (see WGCNA docs)
-                                      debug=F,
-                                      exCludeGrey=FALSE){
+                                n.iterations=50,	#Number of iterations for k-means, 50 recommended
+                                min.exchanged.genes=20,
+                                expr.data, 	#We expect a file name pointing to a dataframe (RDS format) with
+                                #genes in columns and samples in rows. Each gene name appears
+                                #in the column name. Better to use gene symbols as names
+                                beta=-1,	#If -1 the algorithm will seek for the best beta
+                                job.path="~/tmp/",	#Where to store all results
+                                min.cluster.size=30,		#Minimum number of genes to form a cluster
+                                net.type="signed",			#Leave it like that (see WGCNA docs)
+                                debug=F,
+                                save.tom=F,
+                                save.plots=F,
+                                exCludeGrey=FALSE){
 
   final.net=NULL
-  save.tom=F
   distance.type="cor"
   centroid.type="pca"
   cor.type="pearson"
@@ -96,13 +98,13 @@ getDownstreamNetwork = function(tissue="mytissue",
   }
 
   net.and.tom = getAndPlotNetworkLong(expr.data=expr.data,
-                                            beta=beta,
-                                            tissue.name=tissue,
-                                            min.cluster.size=min.cluster.size,
-                                            save.plots=TRUE,
-                                            additional.prefix=job.path,
-                                            return.tom=TRUE,
-                                            cor.type=cor.type)
+                                      beta=beta,
+                                      tissue.name=tissue,
+                                      min.cluster.size=min.cluster.size,
+                                      save.plots=save.plots,
+                                      additional.prefix=job.path,
+                                      return.tom=save.tom,
+                                      cor.type=cor.type)
 
   if(is.null(final.net))
     final.net = paste0(job.path,"/","net",tissue,".",
@@ -112,21 +114,25 @@ getDownstreamNetwork = function(tissue="mytissue",
     saveRDS(net.and.tom$tom,paste0(final.net,".tom.rds"))
 
   outnet = applyKMeans(tissue=tissue,
-                             n.iterations=n.iterations,
-                             net.file=net.and.tom$net,
-                             distance.type=distance.type,
-                             centroid.type=centroid.type,
-                             tom=net.and.tom$tom,
-                             expr.data=expr.data,
-                             plot.evolution=plot.evolution,
-                             beta=net.and.tom$net$beta,
-                             job.path=job.path,
-                             final.net=final.net,
-                             cor.type=cor.type)
+                       n.iterations=n.iterations,
+                       net.file=net.and.tom$net,
+                       distance.type=distance.type,
+                       centroid.type=centroid.type,
+                       tom=net.and.tom$tom,
+                       expr.data=expr.data,
+                       plot.evolution=plot.evolution,
+                       beta=net.and.tom$net$beta,
+                       min.exchanged.genes = min.exchanged.genes,
+                       job.path=job.path,
+                       final.net=final.net,
+                       cor.type=cor.type)
+  foutnet = NULL
+  foutnet$beta = net.and.tom$net$beta
+  foutnet$type = net.and.tom$net$type
+  foutnet$net = outnet[[1]]
+  if(save.tom)
+    foutnet$tom = paste0(final.net,".tom.rds")
 
-  outnet$beta = net.and.tom$net$beta
-  outnet$type = net.and.tom$net$type
-  outnet$net = outnet[[1]]
 
   cat("Generating mod sizes for",final.net,"\n")
   pdf(paste0(final.net,".mod_size.pdf"))
@@ -135,7 +141,7 @@ getDownstreamNetwork = function(tissue="mytissue",
   pdf(paste0(final.net,".Eigengenes_clustering.pdf"))
   plotEGClustering(which.one="new",tissue=final.net)
   dev.off()
-  return(outnet)
+  return(foutnet)
 }
 
 plotEGClustering = function(tissue,which.one){
@@ -201,7 +207,7 @@ plotModSizes = function(which.one,tissue){
 }
 
 generateBetaStudy <- function(expr.data,powers=c(1:30),title=NULL,plot.file=NULL,
-                                    net.type="signed",cor.type="pearson"){
+                              net.type="signed",cor.type="pearson"){
   stopifnot(cor.type == "pearson" | cor.type == "spearman")
   if(!is.null(plot.file))
     pdf(plot.file,width=18,height=8)
@@ -247,29 +253,28 @@ generateBetaStudy <- function(expr.data,powers=c(1:30),title=NULL,plot.file=NULL
 }
 
 applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
-                              create.tom=TRUE,
-                              distance.type=COR_DISTANCE,
-                              centroid.type=EG_CENTROID,
-                              n.iterations=20,
-                              net.file=snig.net.file,
-                              expr.data=snig.expr.data.object,
-                              beta=6,
-                              tom=NULL,	#If TOM is NULL, it is created. If it is an object is used and if its a character is readed
-                              job.path="/tmp/kmeans/",
-                              plot.evolution=TRUE,
-                              plot.go=FALSE,
-                              debug=F,
-                              n.debug=500,
-                              norm.when.euc.mean=TRUE,
-                              net.type="signed",
-                              min.exchanged.genes=20,
-                              final.net=paste0(job.path,"/","net",tissue,".",beta,".",net.type,".it.",n.iterations,".rds"),
-                              cor.type="pearson"){
+                        create.tom=TRUE,
+                        distance.type=COR_DISTANCE,
+                        centroid.type=EG_CENTROID,
+                        n.iterations=20,
+                        net.file=snig.net.file,
+                        expr.data=snig.expr.data.object,
+                        beta=6,
+                        tom=NULL,	#If TOM is NULL, it is created. If it is an object is used and if its a character is readed
+                        job.path="/tmp/kmeans/",
+                        plot.evolution=TRUE,
+                        plot.go=FALSE,
+                        debug=F,
+                        n.debug=500,
+                        norm.when.euc.mean=TRUE,
+                        net.type="signed",
+                        min.exchanged.genes=20,
+                        k.means.min.genes.to.consider.grey=300,
+                        final.net=paste0(job.path,"/","net",tissue,".",beta,".",net.type,".it.",n.iterations,".rds"),
+                        cor.type="pearson"){
 
-  print("Expression data")
   if(typeof(expr.data) == "character")
     expr.data <- readRDS(expr.data)
-  print(expr.data[1:5,1:5])
 
   if(debug){
     cat("We are debugging, using only ",n.debug," genes")
@@ -278,7 +283,6 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
 
   #Step 2
   if(typeof(net.file) == "character"){
-    print("Loading network")
     net <- readRDS(net.file)
   }else
     net = net.file
@@ -295,7 +299,6 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
       corOptions = "use = 'p'"
     adjacency = adjacency(expr.data, power = beta, type = net.type, corOptions=corOptions)
     tom.matrix = TOMsimilarity(adjacency)
-    cat("The tom matrix has been generated\n")
   }else if(typeof(tom) == "character"){
     cat("TOM matrix loaded from file",tom,"\n")
     tom.matrix = readRDS(tom)
@@ -304,20 +307,13 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
     tom.matrix = tom
   }
 
-  print(tom.matrix[1:5,1:5])
 
-  plot.evolution.file <- paste0(final.net,"_",distance.type,"_",centroid.type,"_evolution.kmeans.pdf")
-  partitions.file <- paste0(final.net,"_",distance.type,"_",centroid.type,"_partitions.rds")
-  evolution.file <- paste0(final.net,"_",distance.type,"_",centroid.type,"_evolution.kmeans.rds")
-  print(paste0("Evolution plot will be at ",plot.evolution.file))
-  print(paste0("Partitions data will be at ",partitions.file))
-  print(paste0("Evolution data will be at ",evolution.file))
-
-  #if(do.go){
-  go.file <- paste0(final.net,"_",distance.type,"_",centroid.type,"_go.rds")
-  print(paste0("GO analysis will be at  ",go.file))
-  #}
-
+  #plot.evolution.file <- paste0(final.net,"_",distance.type,"_",centroid.type,"_evolution.kmeans.pdf")
+  #partitions.file <- paste0(final.net,"_",distance.type,"_",centroid.type,"_partitions.rds")
+  #evolution.file <- paste0(final.net,"_",distance.type,"_",centroid.type,"_evolution.kmeans.rds")
+  #print(paste0("Evolution plot will be at ",plot.evolution.file))
+  #print(paste0("Partitions data will be at ",partitions.file))
+  #print(paste0("Evolution data will be at ",evolution.file))
 
   #ALGORITHM SPECIFICATION
   #Step 1. Let D be the expression data in which dij in D represents the expression value for
@@ -344,25 +340,25 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
 
   #Gather the current partition we start from
   partition.in.colors <- net$moduleColors
-  print(head(partition.in.colors,5))
+  #print(head(partition.in.colors,5))
 
   #Step 3
 
-  print("Getting initial eigengenes")
+  #print("Getting initial eigengenes")
   if(sum(partition.in.colors == "grey") < k.means.min.genes.to.consider.grey)
     eigengenes = moduleEigengenes(expr.data,partition.in.colors, excludeGrey=TRUE)
   else
     eigengenes = moduleEigengenes(expr.data,partition.in.colors, excludeGrey=F)
 
-  print(paste0("We got ",length(eigengenes$eigengenes), " eigengene vectors"))
-  print(head(eigengenes$eigengenes))
+  #print(paste0("We got ",length(eigengenes$eigengenes), " eigengene vectors"))
+  #print(head(eigengenes$eigengenes))
 
   #This variable is fixed and used as a reference to indicate the
   #modules used (they are colours but the position within the vector is
   #also relevant)
   centroid.labels <- substring(names(eigengenes$eigengenes),3)
-  print("Module colors are")
-  print(head(centroid.labels))
+  #print("Module colors are")
+  #print(head(centroid.labels))
 
   #Step 4
   k <- length(eigengenes$eigengenes)
@@ -370,10 +366,8 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
   #as much rows as samples
   centroids <- createCentroidMatrix(eigengenes$eigengenes)
 
-
-
-  print("We have generated centroids")
-  print(head(centroids))
+  #print("We have generated centroids")
+  #print(head(centroids))
 
 
   #Step 5
@@ -382,11 +376,11 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
   #A partition will be a list of as much elements as genes and for the
   #i-th position it stores the index of the module the ith gene belongs
   #to, and the color can be found in "centroid.labels"
-  print("From partition ")
-  print(head(partition.in.colors))
-  print("We create ")
+  #print("From partition ")
+  #print(head(partition.in.colors))
+  #print("We create ")
   new.partition <- match(partition.in.colors, centroid.labels)
-  print(head(new.partition))
+  #print(head(new.partition))
   names(new.partition) <- centroid.labels[new.partition]
   partitions[[1]] <- new.partition
 
@@ -402,26 +396,23 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
   iteration = 1
 
   while(exchanged.genes > min.exchanged.genes & iteration <= n.iterations){
+    cat("k-means iteration:",iteration,"and",(n.iterations - iteration),"iterations left\n")
 
-    #for(iteration in 1:n.iterations){
-    print(paste0("Starting partition ",iteration))
-    print(paste0("Number of centroids before getting new partition ",ncol(centroids)))
-
-    new.partition <- apply(expr.data,MARGIN=2,getBestModuleCor,centroids=centroids,
-                           signed=(net.type == "signed"),cor.type=cor.type)
-
-    print(paste0("We got a new partition with distance type ",distance.type))
+    new.partition <- apply(expr.data,MARGIN=2,getBestModuleCor,
+                           centroids=centroids,
+                           signed=(net.type == "signed"),
+                           cor.type=cor.type)
 
     partitions[[iteration + 1]] <- new.partition
     #Get the control values for the new partition
     exchanged.gene.count <- length(getExchangedGenes(partitions[[iteration]],
-                                                           partitions[[iteration + 1]]))
-    print(paste0("A total of ", exchanged.gene.count,
-                 " genes have moved to another partition"))
+                                                     partitions[[iteration + 1]]))
+    cat(exchanged.gene.count,
+        "genes moved to another module by k-means\n")
     #print(new.partition)
     new.partition.in.colors <- centroid.labels[unlist(new.partition)]
-    print("New partition colors")
-    print(head(new.partition.in.colors))
+    #print("New partition colors")
+    #print(head(new.partition.in.colors))
     centroids <- getNewCentroids(expr.data,new.partition.in.colors,centroid.labels,centroid.type)
     #centroids <- unlist(centroids)
 
@@ -430,11 +421,14 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
   }
   cat("We finish with",iteration,"iterations\n")
   cat("Last number of gene changes where",exchanged.genes,"\n")
-  saveRDS(partitions,partitions.file)
+  #saveRDS(partitions,partitions.file)
 
   print("The algorithm finished correctly")
   result.net = genNetFromPartition(expr.data.file=expr.data,
-                                         beta=beta,partitions.file=partitions.file,index=-1)
+                                   k.means.min.genes.to.consider.grey=k.means.min.genes.to.consider.grey,
+                                   beta=beta,
+                                   partitions.file=partitions,
+                                   index=-1)
   if(typeof(final.net) == "character"){
     saveRDS(result.net,final.net)
     cat("Final network saved at",final.net,"\n")
@@ -444,9 +438,7 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
 }
 
 getNewCentroids <- function(expr.data,partition.in.colors,centroid.labels,centroid.type=MEAN_CENTROID){
-  print(paste0("Generating centroids with ",centroid.type))
-
-
+  #print(paste0("Generating centroids with ",centroid.type))
   return(getNewCentroidsEG(expr.data,partition.in.colors,centroid.labels))
   print(paste0("Centroid type ",centroid.type, " unknown. Returning NULL"))
   return(NULL)
@@ -463,10 +455,16 @@ getNewCentroidsEG = function(expr.data,partition.in.colors,centroid.labels){
   return(eg.vectors)
 }
 
-genNetFromPartition = function(expr.data.file=snig.expr.data.object,beta=6,
-                                     partitions.file="/tmp/kmeans/partitions_SNIG.Peer4.Beta6.rds",index=-1){
+genNetFromPartition = function(expr.data.file,
+                               beta,
+                               partitions.file,
+                               k.means.min.genes.to.consider.grey=300,
+                               index=-1){
 
-  parts = readRDS(partitions.file)
+  if(typeof(partitions.file) == "character")
+    parts = readRDS(partitions.file)
+  else
+    parts = partitions.file
 
   if(index < 0)
     index = length(parts)
@@ -522,15 +520,15 @@ createCentroidMatrix <- function(eigengenes){
 }
 
 getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
-                                        tissue.name="SNIG",title=NULL,
-                                        additional.prefix=NULL,
-                                        min.cluster.size=100,
-                                        save.plots=TRUE,
-                                        return.tom=FALSE,
-                                        excludeGrey=FALSE,
-                                        max.k.cutoff = 150,
-                                        r.sq.cutoff = 0.8,
-                                        cor.type="pearson"){
+                                  tissue.name="SNIG",title=NULL,
+                                  additional.prefix=NULL,
+                                  min.cluster.size=100,
+                                  save.plots=TRUE,
+                                  return.tom=FALSE,
+                                  excludeGrey=FALSE,
+                                  max.k.cutoff = 150,
+                                  r.sq.cutoff = 0.8,
+                                  cor.type="pearson"){
 
   net <- NULL
 
@@ -559,9 +557,9 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
   if(beta < 0){
     if(save.plots){
       b.study = generateBetaStudy(expr.data,title=paste0("Beta study for ",tissue.name),
-                                        net.type=net.type,cor.type=cor.type,
-                                        plot.file=paste0(additional.prefix,
-                                                         "betastudy",gsub(" ","_",tissue.name),".",net.type,".pdf"))
+                                  net.type=net.type,cor.type=cor.type,
+                                  plot.file=paste0(additional.prefix,
+                                                   "betastudy",gsub(" ","_",tissue.name),".",net.type,".pdf"))
     }else
       b.study = generateBetaStudy(expr.data,net.type=net.type,cor.type=cor.type)
     #beta = b.study$powerEstimate
@@ -785,12 +783,12 @@ corDistance = function(a,b,signed=TRUE,cor.type="pearson"){
 }
 
 getMM = function(net=NULL,
-                       expr.data.file=NULL,
-                       tissue,genes,
-                       table.format=FALSE,
-                       which.one="rnaseq",
-                       silent=F,keep.grey=F,
-                       alt.gene.index=NULL){
+                 expr.data.file=NULL,
+                 tissue,genes,
+                 table.format=FALSE,
+                 which.one="rnaseq",
+                 silent=F,keep.grey=F,
+                 alt.gene.index=NULL){
 
   net = getNetworkFromTissue(tissue,which.one)
   if(is.null(expr.data.file))
@@ -958,7 +956,7 @@ corWithNumTraits = function(tissue,which.one,covlist,covs=NULL){
 }
 
 
-trasposeDataFrame = function(file.in,first.c.is.name=T){
+trasposeDataFrame = function(file.in,first.c.is.name=F){
   if(typeof(file.in) == "character")
     data.in = readRDS(file.in)
   else{
