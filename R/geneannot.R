@@ -68,10 +68,7 @@ reportOnFETGenes = function(tissue,genes,which.one,net){
 reportOnGenes = function(tissue,genes,silent=F,
                                which.one="signedrnaseq",
                                mantel.its=1000,alt.probes=NULL,include.pd=T,
-                               ens.correction=c("ENSG00000262446","ENSG00000177628",
-                                                "ENSG00000261832", "ENSG00000188603",
-                                                "ENSG00000262208", "ENSG00000114378",
-                                                "ENSG00000228691","ENSG00000204386"),
+                               ens.correction=NULL,
                                gwases=NULL){
 
   #Everything will be turned into Ensembl
@@ -306,27 +303,27 @@ functionalReportOnModule = function(tissue="SNIG",module,which.one="rnaseq"){
 
   if(which.one  == "micro19K"){
 
-    gprof.file = paste0(paste0(gdp.coexp(),"/supplementary/rdsnets/micro19K/"),
+    gprof.file = paste0(paste0("supplementary/rdsnets/micro19K/"),
                         tissue,"_cor_pca_GO.csv")
 
   }else if(which.one == "exonic"){
     if(tissue == "SNIG")
-      gprof.file = paste0(gdp.coexp(),"/supplementary/rdsnets/exonic/netSNIG.7.12.it.30.rds_gprofiler.csv")
+      gprof.file = paste0("supplementary/rdsnets/exonic/netSNIG.7.12.it.30.rds_gprofiler.csv")
     else
-      gprof.file = paste0(gdp.coexp(),"/supplementary/rdsnets/exonic/netPUTM.8.13.it.30.rds_gprofiler.csv")
+      gprof.file = paste0("supplementary/rdsnets/exonic/netPUTM.8.13.it.30.rds_gprofiler.csv")
 
   }else if(which.one == "gtexv6"){
     gprof.file = paste0(getNetworkFromTissue(tissue=tissue,which.one="gtexv6",only.file=T),"_gprof.csv")
 
   }else if(which.one == "rosmap"){
     if(tissue == "cogdxnotad")
-      gprof.file = paste0(gdp.coexp(),"/data/rdsnets/rosmap/netnotad.8.it.50.rds_gprof.csv")
+      gprof.file = paste0("rdsnets/rosmap/netnotad.8.it.50.rds_gprof.csv")
     else if(tissue == "cogdxprobad")
-      gprof.file = paste0(gdp.coexp(),"/data/rdsnets/rosmap/netprobad.11.it.50.rds_gprof.csv")
+      gprof.file = paste0("rdsnets/rosmap/netprobad.11.it.50.rds_gprof.csv")
     else if(tissue == "cogdxad")
-      gprof.file = paste0(gdp.coexp(),"/data/rdsnets/rosmap//netad.8.it.50.rds_gprof.csv")
+      gprof.file = paste0("/rdsnets/rosmap//netad.8.it.50.rds_gprof.csv")
     else if(tissue == "all")
-      gprof.file = paste0(gdp.coexp(),"//supplementary/rdsnets/rosmap/netROSMAPSingle.6.it.50.rds_gprof.csv")
+      gprof.file = paste0("supplementary/rdsnets/rosmap/netROSMAPSingle.6.it.50.rds_gprof.csv")
   }
 
 
@@ -348,43 +345,43 @@ reportOnModule = function(tissue="SNIG",module,which.one="rnaseq",how.many=5,
 
   if(which.one  == "micro19K"){
 
-    gprof.file = paste0(paste0(gdp.coexp(),"/supplementary/rdsnets/micro19K/"),
+    gprof.file = paste0(paste0("supplementary/rdsnets/micro19K/"),
                         tissue,"_cor_pca_GO.csv")
 
   }else if(which.one == "exonic"){
     if(tissue == "SNIG")
-      gprof.file = paste0(gdp.coexp(),"/supplementary/rdsnets/exonic/netSNIG.7.12.it.30.rds_gprofiler.csv")
+      gprof.file = paste0("supplementary/rdsnets/exonic/netSNIG.7.12.it.30.rds_gprofiler.csv")
     else
-      gprof.file = paste0(gdp.coexp(),"/supplementary/rdsnets/exonic/netPUTM.8.13.it.30.rds_gprofiler.csv")
+      gprof.file = paste0("supplementary/rdsnets/exonic/netPUTM.8.13.it.30.rds_gprofiler.csv")
 
-    mt.between = readRDS(paste0(paste0(gdp.coexp(),"/supplementary/rdsnets/exonic/mantel."),tissue,
+    mt.between = readRDS(paste0(paste0("supplementary/rdsnets/exonic/mantel."),tissue,
                                 ".gtex.binary.between.",mantel.its,".data.rds"))
 
-    mt.within = readRDS(paste0(paste0(gdp.coexp(),"/supplementary/rdsnets/exonic/mantel."),tissue,
+    mt.within = readRDS(paste0(paste0("supplementary/rdsnets/exonic/mantel."),tissue,
                                ".gtex.coexpression.within.",mantel.its,".data.rds"))
-    mt.mic.between = readRDS(paste0(paste0(gdp.coexp(),"/supplementary/rdsnets/exonic/mantel."),tissue,
+    mt.mic.between = readRDS(paste0("supplementary/rdsnets/exonic/mantel."),tissue,
                                     ".microarray.binary.between.",mantel.its,".data.rds"))
-    mt.mic.within = readRDS(paste0(paste0(gdp.coexp(),"/supplementary/rdsnets/exonic/mantel."),tissue,
+    mt.mic.within = readRDS(paste0("supplementary/rdsnets/exonic/mantel."),tissue,
                                    ".microarray.coexpression.within.",mantel.its,".data.rds"))
   }else if(which.one == "gtexv6"){
     gprof.file = paste0(getNetworkFromTissue(tissue=tissue,which.one="gtexv6",only.file=T),"_gprof.csv")
 
   }else if(which.one == "rosmap"){
     if(tissue == "cogdxnotad")
-      gprof.file = paste0(gdp.coexp(),"/data/rdsnets/rosmap/netnotad.8.it.50.rds_gprof.csv")
+      gprof.file = paste0("rdsnets/rosmap/netnotad.8.it.50.rds_gprof.csv")
     else if(tissue == "cogdxprobad")
-      gprof.file = paste0(gdp.coexp(),"/data/rdsnets/rosmap/netprobad.11.it.50.rds_gprof.csv")
+      gprof.file = paste0("rdsnets/rosmap/netprobad.11.it.50.rds_gprof.csv")
     else if(tissue == "cogdxad")
-      gprof.file = paste0(gdp.coexp(),"/data/rdsnets/rosmap//netad.8.it.50.rds_gprof.csv")
+      gprof.file = paste0("rdsnets/rosmap//netad.8.it.50.rds_gprof.csv")
     else if(tissue == "all")
-      gprof.file = paste0(gdp.coexp(),"/supplementary/rdsnets/rosmap/netROSMAPSingle.6.it.50.rds_gprof.csv")
+      gprof.file = paste0("supplementary/rdsnets/rosmap/netROSMAPSingle.6.it.50.rds_gprof.csv")
   }
 
 
   pd.genes = "void"
   if(include.pd){
 
-    pd.genes = read.table(paste0(gdp.coexp(),"/data/pd_genes.txt"),
+    pd.genes = read.table(paste0("pd_genes.txt"),
                           stringsAsFactors=F,header=F)
     pd.genes = pd.genes$V1
     genes.in.module = getGenesFromModule(tissue=tissue,which.one=which.one,module=module)
@@ -583,13 +580,13 @@ reportOnModuleReplication = function(tissue="SNIG",module,
 
   #Mantel results
   stopifnot(which.one == "exonic")
-  mt.between = readRDS(paste0(paste0(gdp.coexp(),"/supplementary/rdsnets/exonic/mantel."),tissue,
+  mt.between = readRDS(paste0("supplementary/rdsnets/exonic/mantel."),tissue,
                               ".gtex.binary.between.",mantel.its,".data.rds"))
-  mt.within = readRDS(paste0(paste0(gdp.coexp(),"//supplementary/rdsnets/exonic/mantel."),tissue,
+  mt.within = readRDS(paste0("supplementary/rdsnets/exonic/mantel."),tissue,
                              ".gtex.coexpression.within.",mantel.its,".data.rds"))
-  mt.mic.between = readRDS(paste0(paste0(gdp.coexp(),"/supplementary/rdsnets/exonic/mantel."),tissue,
+  mt.mic.between = readRDS(paste0("supplementary/rdsnets/exonic/mantel."),tissue,
                                   ".microarray.binary.between.",mantel.its,".data.rds"))
-  mt.mic.within = readRDS(paste0(paste0(gdp.coexp(),"/supplementary/rdsnets/exonic/mantel."),tissue,
+  mt.mic.within = readRDS(paste0("supplementary/rdsnets/exonic/mantel."),tissue,
                                  ".microarray.coexpression.within.",mantel.its,".data.rds"))
 
   if(module %in% names(mt.within))
@@ -634,18 +631,17 @@ getZSummary = function(tissue="SNIG",
   {
     source = 2
     target = 1
-    pr.file = paste0(gdp.coexp(),
-                     "/supplementary/rdsnets/micro19K/PUTM.mic.net.19K.rds_vs_SNIG.mic.net.19K.rds_preserv.rds")
+    pr.file = paste0("supplementary/rdsnets/micro19K/PUTM.mic.net.19K.rds_vs_SNIG.mic.net.19K.rds_preserv.rds")
   }else if(which.one == "exonic"){
-    pr.file = paste0(gdp.coexp(),"/supplementary/rdsnets/exonic/SNIG_vs_PUTM_preserv.rds")
+    pr.file = paste0("supplementary/rdsnets/exonic/SNIG_vs_PUTM_preserv.rds")
   }else if(which.one == "exonic.vs.gtex"){
-    pr.file = paste0(gdp.coexp(),"/supplementary/rdsnets/gtexv6/",
+    pr.file = paste0("supplementary/rdsnets/gtexv6/",
                      tissue,".UKBEC_vs_",tissue,".GTEx_preserv.rds")
     stats = readRDS(pr.file)
     loc.modules = rownames(stats$preservation$Z[[1]][[2]])
     return(stats$preservation$Z[[1]][[2]][match(modules,loc.modules),"Zsummary.pres"])
   }else if(which.one == "exonic.vs.micro"){
-    pr.file = paste0(gdp.coexp(),"/supplementary/rdsnets/exonic/",
+    pr.file = paste0("supplementary/rdsnets/exonic/",
                      tissue,"-RNAseq_vs_",tissue,"-microarray_preserv.rds")
     stats = readRDS(pr.file)
     loc.modules = rownames(stats$preservation$Z[[1]][[2]])
@@ -687,13 +683,13 @@ getZsummary10MicTissues1Module = function(tissue,module){
   outtissues = NULL
   for(othertissue in lefttissues){
     othernet = getNetworkFromTissue(tissue=othertissue,which.one="micro19K")
-    file.in = paste0(gdp.coexp(),"/supplementary/rdsnets/micro19K/",
+    file.in = paste0("supplementary/rdsnets/micro19K/",
                      othertissue,".mic.net.19K.rds_vs_",tissue,
                      ".mic.net.19K.rds_preserv.rds","Zsummary.csv")
     if(!file.exists(file.in))
       getPreservationStatistics(networks=list(othernet,tnet),
                                       tissues=c(othertissue,tissue),
-                                      paste0(gdp.coexp(),"/supplementary/rdsnets/micro19K/",othertissue,".mic.net.19K.rds_vs_",tissue,
+                                      paste0("supplementary/rdsnets/micro19K/",othertissue,".mic.net.19K.rds_vs_",tissue,
                                              ".mic.net.19K.rds_preserv.rds"))
 
     pr = read.csv(file=file.in,stringsAsFactors=F)
@@ -706,13 +702,13 @@ getZsummary10MicTissues1Module = function(tissue,module){
 
   for(othertissue in righttissues){
     othernet = getNetworkFromTissue(tissue=othertissue,which.one="micro19K")
-    file.in = paste0(gdp.coexp(),"/supplementary/rdsnets/micro19K/",
+    file.in = paste0("supplementary/rdsnets/micro19K/",
                      tissue,".mic.net.19K.rds_vs_",othertissue,
                      ".mic.net.19K.rds_preserv.rds","Zsummary.csv")
     if(!file.exists(file.in))
       getPreservationStatistics(networks=list(tnet,othernet),
                                       tissues=c(tissue,othertissue),
-                                      paste0(gdp.coexp(),"/supplementary/rdsnets/micro19K/",
+                                      paste0("supplementary/rdsnets/micro19K/",
                                              tissue,".mic.net.19K.rds_vs_",othertissue,
                                              ".mic.net.19K.rds_preserv.rds"))
     pr = read.csv(file=file.in,stringsAsFactors=F)
@@ -956,7 +952,6 @@ getGProfilerOnNet <- function(net.file=snig.exonic.net.file,
 
 loadICsGOSim = function(onto){
   stopifnot(onto %in% c("BP","MF","CC"))
-  path = paste0(gdp.coexp(),"/data/")
   if(onto == "BP")
     load(paste0(path,"ICsBPhumanall.rda"),
          .GlobalEnv)
@@ -1055,8 +1050,7 @@ getFriendlyNameForColumnCategories = function(cats){
 cellTypeByModule = function(tissue="None",
                                   do.plot=T,
                                   which.one="new",
-                                  plot.file=paste0(paste0(gdp.coexp(),"/datasets/nets/cell.type.by.module."),
-                                                   tissue,".pdf"),
+                                  plot.file,
                                   net.in=NULL,
                                   legend=NULL,
                                   threshold=20,
@@ -1085,40 +1079,8 @@ cellTypeByModule = function(tissue="None",
   #will have a column for each cell.types element and a row for
   #each module and we will show -log10(p-values) in a scale
 
-  path.ukbec.cell.files = paste0(gdp.coexp(),"/data//")
-  if(which.one == "rnaseq"){
-    if(tissue == "SNIG")
-      enrichment = read.csv(paste0(gdp.coexp(),"data/na/nets/network1237511.4.SNIG.6.rds.USER_terms.csv"),
-                            stringsAsFactors=F)
-    else
-      enrichment = read.csv(paste0(gdp.coexp(),"data/na/nets/network1237918.4.PUTM.6.rds.USER_terms.csv"),
-                            stringsAsFactors=F)
-  }else if(which.one == "signedrnaseq"){
-    if(tissue == "SNIG")
-      enrichment = read.csv(paste0(gdp.coexp(),
-                                   'data/na/signed/netSNIG.14.4.signed.rds.USER_terms.csv'),
-                            stringsAsFactors=F)
-    else
-      enrichment = read.csv(paste0(gdp.coexp(),"data/na/nets/network1237918.4.PUTM.6.rds.USER_terms.csv"),
-                            stringsAsFactors=F)
-  }else if(which.one == "unsignedrnaseq"){
-    if(tissue == "SNIG")
-      enrichment = read.csv(paste0(gdp.coexp(),
-                                   'data/na/unsigned/netSNIG.6.4.unsigned.rds.USER_terms.csv'),
-                            stringsAsFactors=F)
-    else
-      enrichment = read.csv(paste0(gdp.coexp(),"data/na/unsigned/netPUTM.6.4.unsigned.rds.USER_terms.csv"),
-                            stringsAsFactors=F)
-  }else if(which.one == "signedkmeansrnaseq"){
-    if(tissue == "SNIG")
-      enrichment = read.csv(paste0(gdp.coexp(),
-                                   'data/kmwgcna/tests/signed/netSNIG.14.4.signed.rds.kmeans.cor.pca.rds.USER_terms.csv'),
-                            stringsAsFactors=F)
-    else
-      enrichment = read.csv(paste0(gdp.coexp(),
-                                   'data/kmwgcna/tests/signed/netPUTM.14.4.signed.rds.kmeans.cor.pca.rds.USER_terms.csv'),
-                            stringsAsFactors=F)
-  }else if(which.one == "exonic"){
+
+  if(which.one == "exonic"){
     if(tissue == "SNIG")
       enrichment = read.csv(paste0(coexp.nets[["exonic"]][["SNIG"]],".USER_terms.csv"),
                             stringsAsFactors=F)
@@ -1131,20 +1093,18 @@ cellTypeByModule = function(tissue="None",
   }else if(which.one == "rosmap"){
     e.file = NULL
     if(tissue == "cogdxnotad")
-      e.file = paste0(gdp.coexp(),"/data/rdsnets/rosmap/netnotad.8.it.50.rds.USER_terms.csv")
+      e.file = paste0("rdsnets/rosmap/netnotad.8.it.50.rds.USER_terms.csv")
     else if(tissue == "cogdxprobad")
-      e.file = paste0(gdp.coexp(),"/data/rdsnets/rosmap/netprobad.11.it.50.rds.USER_terms.csv")
+      e.file = paste0("rdsnets/rosmap/netprobad.11.it.50.rds.USER_terms.csv")
     else if(tissue == "cogdxad")
-      e.file = paste0(gdp.coexp(),"/data/rdsnets/rosmap/netad.8.it.50.rds.USER_terms.csv")
+      e.file = paste0("rdsnets/rosmap/netad.8.it.50.rds.USER_terms.csv")
     else if(tissue == "all")
-      e.file = paste0(gdp.coexp(),"/supplementary/rdsnets/rosmap/netROSMAPSingle.6.it.50.rds.USER_terms.csv")
+      e.file = paste0("supplementary/rdsnets/rosmap/netROSMAPSingle.6.it.50.rds.USER_terms.csv")
     if(!is.null(e.file))
       enrichment = read.csv(e.file)
   }else if(which.one == "micro19K"){
-    file.name = paste0(paste0(gdp.coexp(),"/supplementary/rdsnets/micro19K/net"),tissue,
+    file.name = paste0(paste0("supplementary/rdsnets/micro19K/net"),tissue,
                        ".12.signed.it.20.rds.USER_terms.csv")
-    #net = readRDS(paste0(paste0(gdp(),"data/kmwgcna/tests/micro19K/net",tissue,
-    #		".12.signed.it.20.rds_cor_pca.rds"))
     if(!file.exists(file.name) | is.any.network){
       cat("Generating new user enrichment\n")
       enrichment = userListEnrichment(fromXtIDToGeneSymbols19K(names(net$moduleColors)),
@@ -1175,7 +1135,7 @@ cellTypeByModule = function(tissue="None",
     stop(paste0("Experiment ",which.one," not known"))
   }
 
-  external.ref = read.csv(paste0(path.ukbec.cell.files,"cell_type_TableS1.csv"),stringsAsFactors=F)
+  external.ref = read.csv(paste0("cell_type_TableS1.csv"),stringsAsFactors=F)
 
   all.cell.types = c(coexp.cell.types,coexp.ukbec.cell.types,paste0("External-",colnames(external.ref)))
   cell.type.data = matrix(ncol=length(modules),nrow=length(all.cell.types))
@@ -1198,19 +1158,19 @@ cellTypeByModule = function(tissue="None",
     }
   }
 
-  input.file.names = c(paste0(path.ukbec.cell.files,coexp.ukbec.cell.files),
-                       paste0(path.ukbec.cell.files,"cell_type_TableS1.csv.",colnames(external.ref),".txt"))
+  input.file.names = c(paste0(coexp.ukbec.cell.files),
+                       paste0("cell_type_TableS1.csv.",colnames(external.ref),".txt"))
   cell.types.i.f = c(coexp.ukbec.cell.types,colnames(external.ref))
 
   all.gene.names = fromAny2GeneName(names(net$moduleColors))
 
-  tmp.enr.f = paste0(path.ukbec.cell.files,"cell_type_TableS1.csv.tmp.csv")
+  tmp.enr.f = paste0("/tmp/cell_type_TableS1.csv.tmp.csv")
   if(file.exists(tmp.enr.f))
     file.remove(tmp.enr.f)
   ukbec.en = userListEnrichment(all.gene.names,net$moduleColors,input.file.names,
                                 nameOut=tmp.enr.f)
   if(file.exists(tmp.enr.f)){
-    enrichment = read.csv(paste0(path.ukbec.cell.files,"cell_type_TableS1.csv.tmp.csv"),
+    enrichment = read.csv(paste0("/tmp/cell_type_TableS1.csv.tmp.csv"),
                           stringsAsFactors=F)
 
     last.cell.types = c(coexp.ukbec.cell.types,colnames(external.ref))
@@ -1421,8 +1381,7 @@ genAnnotationCellType = function(tissue="None",
 annotateByCellType = function(tissue="None",
                                     do.plot=T,
                                     which.one="new",
-                                    plot.file=paste0(paste0(gdp.coexp(),"/datasets/nets/cell.type.by.module."),
-                                                     tissue,".pdf"),
+                                    plot.file,
                                     net.in=NULL,
                                     legend=NULL,
                                     threshold=20,
@@ -1452,13 +1411,13 @@ annotateByCellType = function(tissue="None",
   #will have a column for each cell.types element and a row for
   #each module and we will show -log10(p-values) in a scale
 
-  path.ukbec.cell.files = paste0(gdp.coexp(),"/data//")
+  path.ukbec.cell.files = ""
   if(which.one == "rnaseq"){
     if(tissue == "SNIG")
-      enrichment = read.csv(paste0(gdp.coexp(),"data/na/nets/network1237511.4.SNIG.6.rds.USER_terms.csv"),
+      enrichment = read.csv(paste0("data/na/nets/network1237511.4.SNIG.6.rds.USER_terms.csv"),
                             stringsAsFactors=F)
     else
-      enrichment = read.csv(paste0(gdp.coexp(),"data/na/nets/network1237918.4.PUTM.6.rds.USER_terms.csv"),
+      enrichment = read.csv(paste0("data/na/nets/network1237918.4.PUTM.6.rds.USER_terms.csv"),
                             stringsAsFactors=F)
   }else if(which.one == "exonic"){
     enrichment = read.csv(paste0(coexp.nets[[which.one]][[tissue]],".USER_terms.csv"),

@@ -1,11 +1,5 @@
 
 
-# TODO: Add comment
-#
-# Author: juanbot
-###############################################################################
-
-
 #' Title
 #'
 #' @param rpkms.net A GCN in the standard form of the package

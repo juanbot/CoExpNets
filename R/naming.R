@@ -1,7 +1,6 @@
 
 
-coexp.biomart.conv.table = paste0(gdp.coexp(),"/data/EnsemblNamesGRCh38.txt")
-
+#Use system.file("extdata", "2010.csv", package = "testdat", mustWork = TRUE)
 fromAny2Ensembl = function(genes){
   if(substr(genes[1],1,1) == "X"){
     return(fromGeneName2Ensembl(fromXtIDToGeneSymbols19K(genes)))
@@ -76,15 +75,7 @@ fromEnsembl2GeneNameBM = function(genes,use38=T){
   outgenes[is.na(thematch)] = genes[is.na(thematch)]
   cat("fromGeneName2EnsemblBM, couldn't convert",sum(is.na(thematch)),"genes\n")
   return(outgenes)
-  #Lets give it another try
-  #left.genes = genes[!(genes %in% genes.with.name$ensembl_gene_id)]
-  #cat("Trying now with the left",length(left.genes),"genes in HUGO\n")
-  #attributes <- c("ensembl_gene_id","hgnc_symbol")
-  #genes.with.hugo = getBM(attributes=attributes, filters='ensembl_gene_id', values=left.genes,mart=ensembl)
-  #cat("From",length(left.genes),"Ensembl IDs we got",nrow(genes.with.hugo),"genes with HUGO name\n")
 
-  #print(genes.with.hugo)
-  #return(NULL)
 }
 
 
@@ -92,9 +83,6 @@ fromEntrez2Ensembl <- function(genes,
                                table.file=biotype.all.file,
                                ignore.unknown=FALSE,
                                which.are.unknown=FALSE){
-
-  #table.file=biotype.file,ignore.unknown=FALSE){
-  #table.file=biotype.all.file,ignore.unknown=FALSE){
 
   function.table <- read.table(table.file,header=TRUE,stringsAsFactors=FALSE,sep=",")
   gene.names <- function.table$ensembl_gene_id[match(genes,function.table$external_gene_id)]
@@ -155,14 +143,15 @@ fromAny2GeneName = function(genes){
 
 fromXtIDToGeneSymbols19K = function(xids){
 
-  trans.table <- read.csv(paste0(gdp.coexp(),"/supplementary/rdsnets/micro19K/annot_19K.csv"),stringsAsFactors=F)
+  trans.table <- read.csv(paste0("supplementary/rdsnets/micro19K/annot_19K.csv"),stringsAsFactors=F)
   gene.symbols = trans.table$Gene_Symbol[match(xids,trans.table$XtID)]
   gene.symbols[is.na(gene.symbols)] = xids[is.na(gene.symbols)]
   return(gene.symbols)
 }
 
-loadConvTable = function(in.table=coexp.biomart.conv.table){
-  the.table = read.table(in.table,header=F,stringsAsFactors=F)
+loadConvTable = function(){
+
+  the.table = read.table("EnsemblNamesGRCh38.txt",header=F,stringsAsFactors=F)
   colnames(the.table) = c("Ensembl","Gene")
   coexp.utils.gene.names.conv.table <<- the.table
 }
