@@ -1,6 +1,9 @@
 
 
-addNetworkToDDBB = function(netf,folder,which.one,tissue,rewrite=F,
+addNetworkToDDBB = function(netf,folder,
+                            which.one,
+                            tissue,
+                            rewrite=F,
                             filter=c("GO","KEGG","REAC","HP"),
                             ensembl=TRUE,
                             exclude.iea=T,
