@@ -1,4 +1,4 @@
-Package: CoExp
+Package: CoExpNets
 Type: Package
 Title: Co-expression network management based on WGCNA + k-means
 Version: 0.1.0
