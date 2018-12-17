@@ -890,7 +890,9 @@ getGProfilerOnNet <- function(net.file=snig.exonic.net.file,
                                     filter=c("GO","KEGG","REAC"),
                                     ensembl=TRUE,
                                     exclude.iea=T,
+                              organism = "hsapiens",
                                     correction.method="gSCS",
+
                                     out.file=paste0(net.file,"_gprofiler.csv"),...){
 
   if(typeof(net.file) == "character")
@@ -912,9 +914,11 @@ getGProfilerOnNet <- function(net.file=snig.exonic.net.file,
     all.genes[[module]] <- genes
   }
 
-  go <- gprofiler(all.genes,correction_method=correction.method,
+  go <- gprofiler(all.genes,
+                  correction_method=correction.method,
                   #custom_bg=background,
                   src_filter=filter,
+                  organism=organism,
                   exclude_iea=exclude.iea)
   #png_fn = paste0(out.file,".png"),
   #no_isects=T)

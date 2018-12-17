@@ -6,30 +6,42 @@ addNetworkToDDBB = function(netf,folder,
                             rewrite=F,
                             filter=c("GO","KEGG","REAC","HP"),
                             ensembl=TRUE,
+                            do.go=T,
+                            do.ct=T,
                             exclude.iea=T,
                             correction.method="gSCS",
+                            organism = "hsapiens",
                             out.file=paste0(netf,"_gprofiler.csv")){
 
-  go = getGProfilerOnNet(net.file=netf,
+  if(do.go)
+    go = getGProfilerOnNet(net.file=netf,
                                 filter=filter,
                                 ensembl=ensembl,
                                 exclude.iea=exclude.iea,
                                 correction.method=correction.method,
+                           organism=organism,
                                 out.file=out.file)
+  else
+    out.file = ""
 
-  ct = annotateByCellType(tissue=tissue,
-                                which.one="new",
-                                net.in=netf,
-                                legend=tissue,
-                                threshold=20,
-                                plot.file=NULL,
-                                return.processed=F)
+  if(do.ct){
+    ct = annotateByCellType(tissue=tissue,
+                            which.one="new",
+                            net.in=netf,
+                            legend=tissue,
+                            threshold=20,
+                            plot.file=NULL,
+                            return.processed=F)
+    ctfile = paste0(netf,"_celltype.csv")
+    write.csv(ct,ctfile)
 
-  write.csv(ct,paste0(netf,"_celltype.csv"))
+  }else
+    ctfile = ""
+
   addNet(which.one,
          tissue,
          netf,
-         paste0(netf,"_celltype.csv"),
+         ctfile,
          out.file,"")
 
 

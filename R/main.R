@@ -103,7 +103,7 @@ getDownstreamNetwork = function(tissue="mytissue",
                                       min.cluster.size=min.cluster.size,
                                       save.plots=save.plots,
                                       additional.prefix=job.path,
-                                      return.tom=save.tom,
+                                      return.tom=T,
                                       cor.type=cor.type)
 
   if(is.null(final.net))
@@ -150,11 +150,7 @@ plotEGClustering = function(tissue,which.one){
   MEDiss = 1-cor(net$MEs)
   # Cluster module eigengenes
   METree = flashClust(as.dist(MEDiss), method = "average")
-
-  MEDissThres = 0.1 #### MERGING THRESHOLD
-  # Call an automatic merging function
-
-  # Plot the result
+  MEDissThres = 0.1
   tb = table(net$moduleColors)
   names(tb) = paste0("ME",names(tb))
   tb <- tb[ METree$labels ]
