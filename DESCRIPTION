@@ -12,7 +12,7 @@ Description: This package works on gene expression profiling to create
 License: Creative Commons
 Encoding: UTF-8
 LazyData: true
-Imports: preprocessCore,
+Depends: preprocessCore,
     limma,
     stringr,
     swamp,
