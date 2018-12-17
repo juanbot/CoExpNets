@@ -795,6 +795,13 @@ getMM = function(net=NULL,
     expr.data = getExprDataFromTissue(tissue,which.one)
   else
     expr.data = readRDS(expr.data.file)
+
+  if(is.null(expr.data)){
+    cat("There is no expr.data file registered for category", which.one,"and tissue",tissue,"\n")
+    return(expr.data)
+  }
+
+
   if(which.one == "micro19K"){
     names(net$moduleColors) = colnames(expr.data)
   }

@@ -1,16 +1,77 @@
 
 
+addNetworkToDDBB = function(netf,folder,which.one,tissue,rewrite=F,
+                            filter=c("GO","KEGG","REAC","HP"),
+                            ensembl=TRUE,
+                            exclude.iea=T,
+                            correction.method="gSCS",
+                            out.file=paste0(netf,"_gprofiler.csv")){
+
+  go = getGProfilerOnNet(net.file=netf,
+                                filter=filter,
+                                ensembl=ensembl,
+                                exclude.iea=exclude.iea,
+                                correction.method=correction.method,
+                                out.file=out.file)
+
+  ct = annotateByCellType(tissue=tissue,
+                                which.one="new",
+                                net.in=netf,
+                                legend=tissue,
+                                threshold=20,
+                                plot.file=NULL,
+                                return.processed=F)
+
+  write.csv(ct,paste0(netf,"_celltype.csv"))
+  addNet(which.one,
+         tissue,
+         netf,
+         paste0(netf,"_celltype.csv"),
+         out.file,"")
+
+
+
+}
+
+
+
 getNetworkCategories = function(){
   if(!is.null(coexp.nets))
-    return(names(coexp.nets))
+    return(coexp.nets$which.one)
   return(NULL)
 }
 
-getAvailableNetworks = function(category="rosmap"){
-  if(!is.null(coexp.nets)){
-    if(!is.null(coexp.nets[[category]]))
-      return(names(coexp.nets[[category]]))
+findNet = function(which.one,tissue){
+  return(which(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one))
+}
+
+addNet = function(which.one,tissue,netfile,ctfile,gofile,exprdatafile,overwrite){
+
+  if(!exists("coexp.nets"))
+    initDb(mode="empty")
+
+  if(sum(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one) == 0){
+    cat("Adding new network",tissue,"to the category",which.one,"to the database\n")
+    coexp.nets[nrow(coexp.nets) + 1,] <<- c(which.one,
+                                            tissue,
+                                            netfile,ctfile,gofile,exprdatafile)
+  }else{
+    if(overwrite){
+      mask = coexp.nets$tissue == tissue & coexp.nets$which.one == which.one
+      coexp.nets[mask,] <<- c(which.one,
+                                              tissue,
+                                              netfile,ctfile,gofile,exprdatafile)
+    }
+
+    cat("Network",tissue,"in category",which.one,"already exists, we can´t overwrite\n")
   }
+}
+
+
+
+getAvailableNetworks = function(category="rosmap"){
+  if(!is.null(coexp.nets))
+    return(coexp.nets$tissue[coexp.nets$which.one == category])
 
   return(NULL)
 }
@@ -24,19 +85,13 @@ initDbGTEX = function(mandatory=F){
     return
   }
 
-  coexp.nets$gtexv6 <<- NULL
-  coexp.data$gtexv6 <<- NULL
   nets = getGTExTissues()
   for(net in nets){
-    #cat(paste0("Loading GTEx ",net,"\n"))
-    coexp.nets$gtexv6[[net]] <<- getGTExNet(net)
-    coexp.data$gtexv6[[net]] <<- paste0("supplementary/rdsnets/gtexv6/",net,".resids.rds")
-    coexp.go$gtexv6[[net]] <<- paste0(coexp.nets$gtexv6[[net]],"_gprof.csv")
-    coexp.ctype$gtexv6[[net]] <<- paste0(coexp.nets$gtexv6[[net]],".celltype.csv")
-    stopifnot(file.exists(coexp.nets$gtexv6[[net]]))
-    stopifnot(file.exists(coexp.data$gtexv6[[net]]))
-    stopifnot(file.exists(coexp.go$gtexv6[[net]]))
-    stopifnot(file.exists(coexp.ctype$gtexv6[[net]]))
+    addNet("gtexv6",net,getGTExNet(net),
+                                            paste0(getGTExNet(net),"_celltype.csv"),
+                                            paste0(getGTExNet(net),"_gprof.csv"),
+                                            paste0("supplementary/rdsnets/gtexv6/",
+                                                   getGTExNet(net),".resids.rds"))
   }
 }
 
@@ -49,18 +104,14 @@ initExonic = function(mandatory=F){
     cat("RytenLab putamen and Snigra won´t be available, you have to install them\n")
     return
   }
-  coexp.nets$exonic <<- NULL
-  coexp.nets$exonic$SNIG <<- paste0("supplementary/rdsnets/exonic/netSNIG.7.12.it.30.rds")
-  coexp.nets$exonic$PUTM <<- paste0("supplementary/rdsnets/exonic/netPUTM.8.13.it.30.rds")
-  coexp.data$exonic <<- NULL
-  coexp.data$exonic$SNIG <<- paste0("supplementary/rdsnets/exonic/resids.SNIG.7.rds")
-  coexp.data$exonic$PUTM <<- paste0("supplementary/rdsnets/exonic/resids.PUTM.8.rds")
-  coexp.go$exonic <<- NULL
-  coexp.go$exonic$SNIG <<- paste0("supplementary/rdsnets/exonic/netSNIG.7.12.it.30.rds_gprofiler.csv")
-  coexp.go$exonic$PUTM <<- paste0("supplementary/rdsnets/exonic/netPUTM.8.13.it.30.rds_gprofiler.csv")
-  coexp.ctype$exonic <<- NULL
-  coexp.ctype$exonic$SNIG <<- paste0("supplementary/rdsnets/exonic/netSNIG.7.12.it.30.rds.cell.type.csv")
-  coexp.ctype$exonic$PUTM <<- paste0("supplementary/rdsnets/exonic/netPUTM.8.13.it.30.rds.cell.type.csv")
+  addNet("exonic","SNIG","supplementary/rdsnets/exonic/netSNIG.7.12.it.30.rds",
+         "supplementary/rdsnets/exonic/netSNIG.7.12.it.30.rds.cell.type.csv",
+         "supplementary/rdsnets/exonic/netSNIG.7.12.it.30.rds_gprofiler.csv",
+         "supplementary/rdsnets/exonic/resids.SNIG.7.rds")
+  addNet("exonic","PUTM","supplementary/rdsnets/exonic/netPUTM.8.13.it.30.rds",
+         "supplementary/rdsnets/exonic/netPUTM.8.13.it.30.rds.cell.type.csv",
+         "supplementary/rdsnets/exonic/netPUTM.8.13.it.30.rds_gprofiler.csv",
+         "supplementary/rdsnets/exonic/resids.PUTM.8.rds")
 
 }
 
@@ -73,27 +124,21 @@ initUKBECMicroarray = function(mandatory=F){
     cat("RytenLab 10 regions microarray based networks won´t be available, you have to install them\n")
     return
   }
+
   #Init microarray nets
   nets = getMicTissues()
   coexp.nets[["micro19K"]] <<- NULL
   coexp.data[["micro19K"]] <<- NULL
 
   for(net in nets){
-    #cat(paste0("Loading UKBEC microarray ",net,"\n"))
-    coexp.nets$micro19K[[net]] <<- paste0("supplementary/rdsnets/micro19K/net",net,
-                                          ".12.signed.it.20.rds_cor_pca.rds")
-    #stopifnot(file.exists(coexp.nets$micro19K[[net]]))
-    coexp.data$micro19K[[net]] <<- paste0("supplementary/rdsnets/micro19K/",net,
-                                          ".mic.expr.data.19K.rds")
-    #stopifnot(file.exists(coexp.data$micro19K[[net]]))
-    coexp.go$micro19K[[net]] <<- paste0("supplementary/rdsnets/micro19K/net",net,
-                                        ".12.signed.it.20.rds_cor_pca.rds_gprofiler.csv")
-    #stopifnot(file.exists(coexp.go$micro19K[[net]]))
-    coexp.ctype$micro19K[[net]] <<- paste0("supplementary/rdsnets/micro19K/net",net,
-                                           ".12.signed.it.20.rds",".USER_terms.csv")
-    if(!file.exists(coexp.ctype$micro19K[[net]])){
-      cat("Warning!!! MICROARRAY networks wont work\n")
-    }
+    addNet("micro19K",net,paste0("supplementary/rdsnets/micro19K/net",net,
+                                          ".12.signed.it.20.rds_cor_pca.rds"),
+           paste0("supplementary/rdsnets/micro19K/net",net,
+                  ".12.signed.it.20.rds",".USER_terms.csv"),
+           paste0("supplementary/rdsnets/micro19K/net",net,
+                  ".12.signed.it.20.rds_cor_pca.rds_gprofiler.csv"),
+           paste0("supplementary/rdsnets/micro19K/",net,
+                                          ".mic.expr.data.19K.rds"))
   }
 }
 
@@ -107,35 +152,33 @@ initROSMAP = function(mandatory=F){
     cat("ROSMAP based networks won´t be available, you have to install them\n")
     return
   }
-  #Init ROS/MAP nets
-  coexp.nets$rosmap$cogdxad <<- paste0("rdsnets/rosmap/netad.8.it.50.rds")
-  coexp.nets$rosmap$cogdxprobad <<- paste0("rdsnets/rosmap/netprobad.11.it.50.rds")
-  coexp.nets$rosmap$cogdxnotad <<- paste0("rdsnets/rosmap/netnotad.8.it.50.rds")
-
-  coexp.data$rosmap$cogdxad <<- paste0("rdsnets/rosmap/fpkm.casectrl.qc.qn.combat.covs.svas2.res.cogdx.ad.rds")
-  coexp.data$rosmap$cogdxprobad <<- paste0("rdsnets/rosmap/fpkm.casectrl.qc.qn.combat.covs.svas2.res.cogdx.probad.rds")
-  coexp.data$rosmap$cogdxnotad <<- paste0("rdsnets/rosmap/fpkm.casectrl.qc.qn.combat.covs.svas2.res.cogdx.notad.rds")
-
-  coexp.go$rosmap$cogdxad <<- paste0("rdsnets/rosmap/netad.8.it.50.rds_gprofiler.csv")
-  coexp.go$rosmap$cogdxprobad <<- paste0("rdsnets/rosmap/netprobad.11.it.50.rds_gprofiler.csv")
-  coexp.go$rosmap$cogdxnotad <<- paste0("rdsnets/rosmap/netnotad.8.it.50.rds_gprofiler.csv")
-  coexp.ctype$rosmap$cogdxad <<- paste0("rdsnets/rosmap/netad.8.it.50.rds.celltype.csv")
-  coexp.ctype$rosmap$cogdxprobad <<- paste0("rdsnets/rosmap/netprobad.11.it.50.rds.celltype.csv")
-  coexp.ctype$rosmap$cogdxnotad <<- paste0("rdsnets/rosmap/netnotad.8.it.50.rds.celltype.csv")
-
-
-  coexp.nets$test$test <<- paste0("rdsnets/test/smallNetSNIG.rds")
-  coexp.nets$rosmap$all <<- paste0("supplementary/rdsnets/rosmap/netROSMAPSingle.6.it.50.rds")
-  coexp.data$rosmap$all <<- paste0("supplementary/rdsnets/rosmap/fpkm.casectrl.qc.qn.combat.covs.svas2.res.rds")
-  coexp.go$rosmap$all <<- paste0("supplementary/rdsnets/rosmap/netROSMAPSingle.6.it.50.rds_gprofiler.csv")
-  coexp.ctype$rosmap$all <<- paste0("supplementary/rdsnets/rosmap/netROSMAPSingle.6.it.50.rds.celltype.csv")
+  addNet("rosmap","cogdxad","rdsnets/rosmap/netad.8.it.50.rds",
+         "rdsnets/rosmap/netad.8.it.50.rds.celltype.csv",
+         "rdsnets/rosmap/netad.8.it.50.rds_gprofiler.csv",
+         "rdsnets/rosmap/fpkm.casectrl.qc.qn.combat.covs.svas2.res.cogdx.ad.rds")
+  addNet("rosmap","cogdxprobad","rdsnets/rosmap/netprobad.11.it.50.rds",
+         "rdsnets/rosmap/netprobad.11.it.50.rds.celltype.csv",
+         "rdsnets/rosmap/netprobad.11.it.50.rds_gprofiler.csv",
+         "rdsnets/rosmap/fpkm.casectrl.qc.qn.combat.covs.svas2.res.cogdx.probad.rds")
+  addNet("rosmap","cogdxnotad","rdsnets/rosmap/netnotad.8.it.50.rds",
+         "rdsnets/rosmap/netnotad.8.it.50.rds.celltype.csv",
+         "rdsnets/rosmap/netnotad.11.it.50.rds_gprofiler.csv",
+         "rdsnets/rosmap/fpkm.casectrl.qc.qn.combat.covs.svas2.res.cogdx.not.rds")
+  addNet("rosmap","all","supplementary/rdsnets/rosmap/netROSMAPSingle.6.it.50.rds",
+         "supplementary/rdsnets/rosmap/netROSMAPSingle.6.it.50.rds.celltype.csv",
+         "supplementary/rdsnets/rosmap/netROSMAPSingle.6.it.50.rds_gprofiler.csv",
+         "supplementary/rdsnets/rosmap/fpkm.casectrl.qc.qn.combat.covs.svas2.res.rds")
 }
 
 initDb = function(mode = "FULL",...){
-  coexp.nets <<- NULL
-  coexp.data <<- NULL
-  coexp.ctype <<- NULL
-  coexp.go <<- NULL
+
+  coexp.nets  <<- as.data.frame(list(which.one=character(0),
+                                     tissue=character(0),
+                                     net=character(0),
+                                     ctype=character(0),
+                                     go=character(0),
+                                     data=character(0)),
+                                stringsAsFactors=F)
 
   if(mode == "GTEX"){
     initDbGTEX(...)
@@ -162,9 +205,8 @@ initDb = function(mode = "FULL",...){
 
 
   }
-
-  cat(paste0("Networks from ",paste0(names(coexp.nets),collapse=",")," loaded\n"))
-  cat(paste0("Expression data from ",paste0(names(coexp.data),collapse=",")," loaded\n"))
+  cat("These are the networks available now\n")
+  print(coexp.nets)
 }
 
 getCovariates = function(tissue,which.one,cov){
@@ -307,7 +349,7 @@ getNetworkFromTissue = function(tissue="SNIG",which.one="exonic",only.file=F,gen
     return(net)
   }
 
-  file = coexp.nets[[which.one]][[tissue]]
+  file = coexp.nets$net[findNet(which.one,tissue)]
   if(only.file)
     return(file)
   else{
@@ -357,9 +399,13 @@ getModulesMostRelevantGenes = function(tissues="SNIG",
 }
 
 getModuleMostRelevantGenes = function(tissue="SNIG",
-                                      module="red",which.one,n=10,cutoff=-1,expr.data.file=NULL){
+                                      module="red",which.one,n=10,
+                                      cutoff=-1,
+                                      expr.data.file=NULL){
 
-  mm = getMM(which.one=which.one,tissue=tissue,table.format = T,genes=NULL,expr.data.file=expr.data.file)
+  mm = getMM(which.one=which.one,tissue=tissue,table.format = T,
+             genes=NULL,
+             expr.data.file=expr.data.file)
 
   mm = mm[mm$module == module,]
   mm = mm[order(mm$mm,decreasing=TRUE),]
@@ -377,21 +423,24 @@ getExprDataFromTissue = function(tissue="SNIG",which.one="rnaseq",only.file=F){
     return(readRDS(tissue))
   }
 
-  file = coexp.data[[which.one]][[tissue]]
-  if(only.file)
-    return(file)
-  else{
-    if(file.exists(file)){
-      if(which.one == "rosmap"){
-        expr.data = data.frame(readRDS(file))
-        colnames(expr.data) = gsub("\\.[0-9]+","",colnames(expr.data))
-        return(expr.data)
+  file = coexp.nets$data[findNet(which.one,tissue)]
+  if(length(file)){
+    if(only.file)
+      return(file)
+    else{
+      if(file.exists(file)){
+        if(which.one == "rosmap"){
+          expr.data = data.frame(readRDS(file))
+          colnames(expr.data) = gsub("\\.[0-9]+","",colnames(expr.data))
+          return(expr.data)
+        }
+        return(readRDS(file))
       }
-      return(readRDS(file))
+
     }
+    return(NULL)
 
   }
-  return(NULL)
 
   cat(paste0("When getting the expression data for tissue ",tissue," we don't know ",which.one,"\nReturning NULL\n"))
   return(NULL)
@@ -429,36 +478,41 @@ getGOFromTissues = function(tissues,which.ones,modules){
 
 
 getGOFromTissue = function(tissue="SNIG",which.one="rnaseq",module=NULL){
-  if(file.exists(coexp.go[[which.one]][[tissue]])){
-    go = read.csv(coexp.go[[which.one]][[tissue]],stringsAsFactors=F)
-    if(!is.null(module))
-      return(go[go$query.number == module,])
-    return(go)
+  gofile = coexp.nets$go[findNet(which.one,tissue)]
+  if(length(gofile)){
+      go = read.csv(gofile,stringsAsFactors=F)
+      if(!is.null(module))
+        return(go[go$query.number == module,])
+      return(go)
   }
+
   cat(paste0("When getting the network GO for tissue ",tissue," we don't know ",
              which.one,"\nReturning NULL\n"))
   return(NULL)
 }
 
 getCellTypeFromTissue = function(tissue="SNIG",which.one="rnaseq",module=NULL){
-  if(file.exists(coexp.ctype[[which.one]][[tissue]])){
-    ct = data.frame(read.csv(coexp.ctype[[which.one]][[tissue]],stringsAsFactors=F))
-    if(!is.null(module)){
-      if(which.one == "micro19K"){
-        ct = ct[ct$InputCategories == module,]
-        ctvec = ct[,4]
-        names(ctvec) = ct[,2]
 
-      }else{
-        ctvec = ct[,module]
-        names(ctvec) = ct[,1]
+  ctfile = coexp.nets$ctype[findNet(which.one,tissue)]
+  if(length(ctfile)){
+      ct = data.frame(read.csv(ctfile,stringsAsFactors=F))
+      if(!is.null(module)){
+        if(which.one == "micro19K"){
+          ct = ct[ct$InputCategories == module,]
+          ctvec = ct[,4]
+          names(ctvec) = ct[,2]
 
+        }else{
+          ctvec = ct[,module]
+          names(ctvec) = ct[,1]
+
+        }
+        return(ctvec)
       }
-      return(ctvec)
-    }
 
-    else return(ct)
+      else return(ct)
   }
+
 
   cat(paste0("When getting the network cell type signals for tissue ",tissue,
              " we don't know ",which.one,"\nReturning NULL\n"))

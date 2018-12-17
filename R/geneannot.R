@@ -860,13 +860,15 @@ UserGOenrichment <- function(net.file,net.name=NULL,which.one="exonic",do.plot=F
                                    useBloodAtlases=T,
                                    useStemCellLists=T,
                                    usePalazzoloWang=T,
-                                   nameOut=out.file, outputCorrectedPvalues=TRUE)
+                                   nameOut=out.file,
+                                   outputCorrectedPvalues=TRUE)
 
 
 
   if(do.plot){
     pdf(paste0(net.file,".go_user_zscores.pdf"),width=8,height=6)
-    plotGOZScoresUserList(enrichments,net,title=paste0("User enrichment. Sum z-s (p-val < 10e-2), ",
+    plotGOZScoresUserList(enrichments,net,
+                          title=paste0("User enrichment. Sum z-s (p-val < 10e-2), ",
                                                              net.name))
     dev.off()
   }
@@ -953,14 +955,11 @@ getGProfilerOnNet <- function(net.file=snig.exonic.net.file,
 loadICsGOSim = function(onto){
   stopifnot(onto %in% c("BP","MF","CC"))
   if(onto == "BP")
-    load(paste0(path,"ICsBPhumanall.rda"),
-         .GlobalEnv)
+    load(system.file("", "ICsBPhumanall.rda", package = "CoExpNets"),.GlobalEnv)
   else if(onto == "MF")
-    load(paste0(path,"ICsMFhumanall.rda"),
-         .GlobalEnv)
+    load(system.file("", "ICsMFhumanall.rda", package = "CoExpNets"),.GlobalEnv)
   else
-    load(paste0(path,"ICsCChumanall.rda"),
-         .GlobalEnv)
+    load(system.file("", "ICsCChumanall.rda", package = "CoExpNets"),.GlobalEnv)
 }
 
 getICReport = function(gprof){
@@ -1128,7 +1127,7 @@ cellTypeByModule = function(tissue="None",
     cat("Generating new user enrichment into ",file.name,"\n")
     UserGOenrichment(net.file=net,
                            net.name=net.in)
-    print("Done generating new User enrichment\n")
+    cat("Done generating new User enrichment\n")
     #}
     enrichment = read.csv(file.name,stringsAsFactors=F)
   }else{
@@ -1387,9 +1386,12 @@ annotateByCellType = function(tissue="None",
                                     threshold=20,
                                     return.processed=T,
                                     use.grey=F,
+                                    tmpfolder="/tmp/",
                                     display.cats=NULL){ #This last flag FALSE when you want the raw p-values
 
   cat("Entering annotateByCellType ",which.one,"\n")
+  data("coexp.ukbec.cell.types")
+  data("coexp.cell.types")
 
   if(is.null(net.in)){
     net = getNetworkFromTissue(tissue=tissue,which.one=which.one)
@@ -1443,9 +1445,12 @@ annotateByCellType = function(tissue="None",
     stop(paste0("Experiment ",which.one," not known"))
   }
 
-  external.ref = read.csv(paste0(path.ukbec.cell.files,"cell_type_TableS1.csv"),stringsAsFactors=F)
+  external.ref = read.csv(system.file("", "cell_type_TableS1.csv", package = "CoExpNets"),
+                          stringsAsFactors=F)
 
-  all.cell.types = c(coexp.cell.types,coexp.ukbec.cell.types,paste0("External-",colnames(external.ref)))
+  all.cell.types = c(coexp.cell.types,
+                     coexp.ukbec.cell.types,
+                     paste0("External-",colnames(external.ref)))
   cell.type.data = matrix(ncol=length(modules),nrow=length(all.cell.types))
   cell.type.data[,] = 1
   rownames(cell.type.data) = c(getFriendlyNameForColumnCategories(coexp.cell.types),
@@ -1466,19 +1471,24 @@ annotateByCellType = function(tissue="None",
     }
   }
 
-  input.file.names = c(paste0(path.ukbec.cell.files,coexp.ukbec.cell.files),
-                       paste0(path.ukbec.cell.files,"cell_type_TableS1.csv.",colnames(external.ref),".txt"))
+  input.file.names = unlist(lapply(coexp.ukbec.cell.files,function(x){
+    return(system.file("", x, package = "CoExpNets"))}))
+  input.file.names = c(input.file.names,unlist(lapply(paste0("cell_type_TableS1.csv.",colnames(external.ref),".txt"),
+                                               function(x){
+                                                 return(system.file("", x, package = "CoExpNets"))})))
+
+
   cell.types.i.f = c(coexp.ukbec.cell.types,colnames(external.ref))
 
   all.gene.names = fromAny2GeneName(names(net$moduleColors))
 
-  tmp.enr.f = paste0(path.ukbec.cell.files,"cell_type_TableS1.csv.tmp.csv")
+  tmp.enr.f = paste0(tmpfolder,"cell_type_TableS1.csv.tmp.csv")
   if(file.exists(tmp.enr.f))
     file.remove(tmp.enr.f)
   ukbec.en = userListEnrichment(all.gene.names,net$moduleColors,input.file.names,
                                 nameOut=tmp.enr.f)
   if(file.exists(tmp.enr.f)){
-    enrichment = read.csv(paste0(path.ukbec.cell.files,"cell_type_TableS1.csv.tmp.csv"),
+    enrichment = read.csv(paste0(tmpfolder,"cell_type_TableS1.csv.tmp.csv"),
                           stringsAsFactors=F)
 
     last.cell.types = c(coexp.ukbec.cell.types,colnames(external.ref))

@@ -151,13 +151,14 @@ fromXtIDToGeneSymbols19K = function(xids){
 
 loadConvTable = function(){
 
-  the.table = read.table("EnsemblNamesGRCh38.txt",header=F,stringsAsFactors=F)
+  the.table = read.table(system.file("", "EnsemblNamesGRCh38.txt", package = "CoExpNets"),
+                         header=F,stringsAsFactors=F)
   colnames(the.table) = c("Ensembl","Gene")
   coexp.utils.gene.names.conv.table <<- the.table
 }
 
 fromEnsembl2GeneName <- function(genes,ignore.unknown=FALSE,which.are.unknown=FALSE){
-  if(!exists("coexp.utils.gene.names.conv.table"))
+
     loadConvTable()
 
   gene.names <- coexp.utils.gene.names.conv.table$Gene[match(genes,coexp.utils.gene.names.conv.table$Ensembl)]
