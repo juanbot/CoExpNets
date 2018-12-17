@@ -359,9 +359,9 @@ reportOnModule = function(tissue="SNIG",module,which.one="rnaseq",how.many=5,
 
     mt.within = readRDS(paste0(paste0("supplementary/rdsnets/exonic/mantel."),tissue,
                                ".gtex.coexpression.within.",mantel.its,".data.rds"))
-    mt.mic.between = readRDS(paste0("supplementary/rdsnets/exonic/mantel."),tissue,
+    mt.mic.between = readRDS(paste0("supplementary/rdsnets/exonic/mantel.",tissue,
                                     ".microarray.binary.between.",mantel.its,".data.rds"))
-    mt.mic.within = readRDS(paste0("supplementary/rdsnets/exonic/mantel."),tissue,
+    mt.mic.within = readRDS(paste0("supplementary/rdsnets/exonic/mantel.",tissue,
                                    ".microarray.coexpression.within.",mantel.its,".data.rds"))
   }else if(which.one == "gtexv6"){
     gprof.file = paste0(getNetworkFromTissue(tissue=tissue,which.one="gtexv6",only.file=T),"_gprof.csv")
@@ -580,13 +580,13 @@ reportOnModuleReplication = function(tissue="SNIG",module,
 
   #Mantel results
   stopifnot(which.one == "exonic")
-  mt.between = readRDS(paste0("supplementary/rdsnets/exonic/mantel."),tissue,
+  mt.between = readRDS(paste0("supplementary/rdsnets/exonic/mantel.",tissue,
                               ".gtex.binary.between.",mantel.its,".data.rds"))
-  mt.within = readRDS(paste0("supplementary/rdsnets/exonic/mantel."),tissue,
+  mt.within = readRDS(paste0("supplementary/rdsnets/exonic/mantel.",tissue,
                              ".gtex.coexpression.within.",mantel.its,".data.rds"))
-  mt.mic.between = readRDS(paste0("supplementary/rdsnets/exonic/mantel."),tissue,
+  mt.mic.between = readRDS(paste0("supplementary/rdsnets/exonic/mantel.",tissue,
                                   ".microarray.binary.between.",mantel.its,".data.rds"))
-  mt.mic.within = readRDS(paste0("supplementary/rdsnets/exonic/mantel."),tissue,
+  mt.mic.within = readRDS(paste0("supplementary/rdsnets/exonic/mantel.",tissue,
                                  ".microarray.coexpression.within.",mantel.its,".data.rds"))
 
   if(module %in% names(mt.within))
