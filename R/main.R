@@ -151,7 +151,7 @@ plotEGClustering = function(tissue,which.one){
   # Calculate dissimilarity of module eigengenes
   MEDiss = 1-cor(net$MEs)
   # Cluster module eigengenes
-  METree = flashClust(as.dist(MEDiss), method = "average")
+  METree = flashClust::flashClust(as.dist(MEDiss), method = "average")
   MEDissThres = 0.1
   tb = table(net$moduleColors)
   names(tb) = paste0("ME",names(tb))
