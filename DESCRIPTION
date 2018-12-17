@@ -1,0 +1,27 @@
+Package: CoExp
+Type: Package
+Title: Co-expression network management based on WGCNA + k-means
+Version: 0.1.0
+Author: Juan A. Botia
+Maintainer: Juan A. Botia <juanbotiablaya@gmail.com>
+Description: This package works on gene expression profiling to create
+    co-expression networks. It is based in WGCNA and a post-process 
+    phase based on the k-means algorithm for a better redistribution of
+    some of the genes. See details at 
+    https://bmcsystbiol.biomedcentral.com/articles/10.1186/s12918-017-0420-6
+License: Creative Commons
+Encoding: UTF-8
+LazyData: true
+Imports:
+    preprocessCore,
+    limma,
+    stringr,
+    swamp,
+    sva,
+    gplots,
+    outliers,
+    WGCNA,
+    flashClust,
+    gProfileR,
+    GOSim
+RoxygenNote: 6.1.1
