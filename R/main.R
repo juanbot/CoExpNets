@@ -5,14 +5,6 @@
 # Author: juanbot
 ###############################################################################
 
-source("coexpinit.R")
-source("naming.R")
-source("netdb.R")
-source("geneannot.R")
-
-k.means.min.genes.to.consider.grey = 200
-
-
 
 #' Title
 #'
