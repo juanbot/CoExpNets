@@ -133,14 +133,16 @@ getDownstreamNetwork = function(tissue="mytissue",
   if(save.tom)
     foutnet$tom = paste0(final.net,".tom.rds")
 
+  if(save.plots){
+    cat("Generating mod sizes for",final.net,"\n")
+    pdf(paste0(final.net,".mod_size.pdf"))
+    plotModSizes(which.one="new",tissue=final.net)
+    dev.off()
+    pdf(paste0(final.net,".Eigengenes_clustering.pdf"))
+    plotEGClustering(which.one="new",tissue=final.net)
+    dev.off()
 
-  cat("Generating mod sizes for",final.net,"\n")
-  pdf(paste0(final.net,".mod_size.pdf"))
-  plotModSizes(which.one="new",tissue=final.net)
-  dev.off()
-  pdf(paste0(final.net,".Eigengenes_clustering.pdf"))
-  plotEGClustering(which.one="new",tissue=final.net)
-  dev.off()
+  }
   return(foutnet)
 }
 

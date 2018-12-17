@@ -42,10 +42,8 @@ addNetworkToDDBB = function(netf,folder,
          tissue,
          netf,
          ctfile,
-         out.file,"")
-
-
-
+         out.file,"",
+         overwrite = rewrite)
 }
 
 
