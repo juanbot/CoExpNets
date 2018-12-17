@@ -1,19 +1,23 @@
 
 
-#' Title
+#' plotMDS - Testing gene sepparability with multi-dimensional
+#' scalling.
 #'
-#' @param rpkms.net A GCN in the standard form of the package
-#' @param path
-#' @param covvars
+#' @param rpkms.net A dataframe with the expression data with samples in columns.
+#' Columns are assumed to use sample IDs as column names. These IDs should appear
+#' as row names in the covariate file to properly index each value
+#' @param path Folder to write the pdf plot generated
+#' @param covvars The variables from the covs parameter to use in the plot
 #' @param label A string for using at the plot, informative purposes
-#' @param n.mds
+#' @param n.mds Number of genes to use, randomly sampled
+#' @param covs A data frame with all covariates for the samples. The rows must
+#' be named with the sample IDs.
 #'
 #' @return
 #' @export
 #'
 #' @examples
-plotMDS = function(rpkms.net,path,covvars,label,n.mds=-1){
-  covs = getCovariates()
+plotMDS = function(rpkms.net,path,covs,covvars,label,n.mds=-1){
   intersect.s = intersect(rownames(covs),colnames(rpkms.net))
   covs = covs[intersect.s,]
   rpkms.net = rpkms.net[,intersect.s]
@@ -41,6 +45,31 @@ plotMDS = function(rpkms.net,path,covvars,label,n.mds=-1){
 }
 
 
+#' getDownstreamNetwork - Create a network
+#'
+#' @param tissue A label to use to refer to the results in files and downstream results
+#' @param n.iterations Number of iterations in the k-means algorithm to refine the
+#' clustering process
+#' @param expr.data A data frame with expression data, ready to get into WGCNA. Columns
+#' are genes and rows are samples. Column names will be used as gene names in the
+#' analysis product
+#' @param beta The smoothing parameter of the WGCNA pipeline. If -1, then the method
+#' will suggest one automatically by looking at the R2 between gene connectivity and
+#' Scale Free Topology features
+#' @param job.path This method will generate a number of files. It needs a folder to write
+#' results
+#' @param min.cluster.size Minimum number of genes for a group to be considered as cluster
+#' for the tree cutting algorithm to convert from a dendogram to a cluster.
+#' @param net.type Whether a signed ("signed") or unsigned ("unsigned") network type will be created
+#' @param debug Set this to true if you want a quick run of the method to test how it works with
+#' a small amount of your genes
+#' @param exCludeGrey If WGCNA detects grey genes, set it to TRUE if you want them removed
+#' from the network before applying k-means
+#'
+#' @return A file name that can be used to access your network
+#' @export
+#'
+#' @examples
 getDownstreamNetwork = function(tissue="mytissue",
                                       n.iterations=50,	#Number of iterations for k-means, 50 recommended
                                       expr.data, 	#We expect a file name pointing to a dataframe (RDS format) with
@@ -65,8 +94,6 @@ getDownstreamNetwork = function(tissue="mytissue",
     expr.data = expr.data[,1:1500]
     n.iterations=5
   }
-
-
 
   net.and.tom = getAndPlotNetworkLong(expr.data=expr.data,
                                             beta=beta,
