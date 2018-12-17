@@ -45,6 +45,22 @@ findNet = function(which.one,tissue){
   return(which(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one))
 }
 
+saveDDBB = function(fileout){
+  if(exists("coexp.nets")){
+    if(nrow(coexp.nets) > 0){
+      cat("Saving",nrow(coexp.nets),"network references in",fileout)
+      write.table(coexp.nets,fileout,quote=F,sep="\t",col.names=T,row.names=F)
+    }
+  }
+}
+
+loadDDBB = function(filein,outtmp="/tmp/tempddbb.txt"){
+  if(exists("coexp.nets"))
+    saveDDBB(outtemp)
+  coexp.nets <<- read.delim(filein,header=T,sep="\t")
+  cat("Loading",nrow(coexp.nets),"from",filein,"\n")
+}
+
 addNet = function(which.one,tissue,netfile,ctfile,gofile,exprdatafile,overwrite){
 
   if(!exists("coexp.nets"))
