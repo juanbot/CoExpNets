@@ -213,10 +213,10 @@ generateBetaStudy <- function(expr.data,powers=c(1:30),title=NULL,plot.file=NULL
   old.par <- par()
 
   if(cor.type == "pearson")
-    sft = pickSoftThreshold(expr.data,powerVector=powers,verbose=5,moreNetworkConcepts=TRUE,
+    sft = WGCNA::pickSoftThreshold(expr.data,powerVector=powers,verbose=5,moreNetworkConcepts=TRUE,
                             networkType=net.type,corOptions=list(use='p'))
   else
-    sft = pickSoftThreshold(expr.data,powerVector=powers,verbose=5,moreNetworkConcepts=TRUE,
+    sft = WGCNA::pickSoftThreshold(expr.data,powerVector=powers,verbose=5,moreNetworkConcepts=TRUE,
                             networkType=net.type,corFn=stats::cor,corOptions=list(method = "spearman"))
 
   par(mfrow=c(1,2))
@@ -295,8 +295,8 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
       corOptions = "use = 'p', method = 'spearman'"
     else
       corOptions = "use = 'p'"
-    adjacency = adjacency(expr.data, power = beta, type = net.type, corOptions=corOptions)
-    tom.matrix = TOMsimilarity(adjacency)
+    adjacency = WGCNA::adjacency(expr.data, power = beta, type = net.type, corOptions=corOptions)
+    tom.matrix = WGCNA::TOMsimilarity(adjacency)
   }else if(typeof(tom) == "character"){
     cat("TOM matrix loaded from file",tom,"\n")
     tom.matrix = readRDS(tom)
@@ -344,9 +344,9 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
 
   #print("Getting initial eigengenes")
   if(sum(partition.in.colors == "grey") < k.means.min.genes.to.consider.grey)
-    eigengenes = moduleEigengenes(expr.data,partition.in.colors, excludeGrey=TRUE)
+    eigengenes = WGCNA::moduleEigengenes(expr.data,partition.in.colors, excludeGrey=TRUE)
   else
-    eigengenes = moduleEigengenes(expr.data,partition.in.colors, excludeGrey=F)
+    eigengenes = WGCNA::moduleEigengenes(expr.data,partition.in.colors, excludeGrey=F)
 
   #print(paste0("We got ",length(eigengenes$eigengenes), " eigengene vectors"))
   #print(head(eigengenes$eigengenes))
@@ -446,7 +446,7 @@ getNewCentroidsEG = function(expr.data,partition.in.colors,centroid.labels){
   #if(sum(partition.in.colors == "grey") < k.means.min.genes.to.consider.grey)
   #	eg.vectors = moduleEigengenes(expr.data,partition.in.colors, excludeGrey=TRUE)$eigengenes
   #else
-  eg.vectors = moduleEigengenes(expr.data,partition.in.colors, excludeGrey=F)$eigengenes
+  eg.vectors = WGCNA::moduleEigengenes(expr.data,partition.in.colors, excludeGrey=F)$eigengenes
 
   names(eg.vectors) <- substring(names(eg.vectors),3)
   eg.vectors <- eg.vectors[,centroid.labels]
@@ -498,9 +498,9 @@ genNetFromPartition = function(expr.data.file,
   new.net$moduleColors[is.na(new.net$moduleColors)] = "grey"
 
   if(sum(new.net$moduleColors == "grey") >= k.means.min.genes.to.consider.grey)
-    new.net$MEs  = moduleEigengenes(expr.data,new.net$moduleColors,softPower=beta, excludeGrey=F)$eigengenes
+    new.net$MEs  = WGCNA::moduleEigengenes(expr.data,new.net$moduleColors,softPower=beta, excludeGrey=F)$eigengenes
   else
-    new.net$MEs  = moduleEigengenes(expr.data,new.net$moduleColors,softPower=beta, excludeGrey=T)$eigengenes
+    new.net$MEs  = WGCNA::moduleEigengenes(expr.data,new.net$moduleColors,softPower=beta, excludeGrey=T)$eigengenes
   return(new.net)
 }
 
@@ -613,7 +613,7 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
   else
     corOptions = "use = 'p'"
 
-  adjacency = adjacency(expr.data, power = beta, type = net.type, corOptions = corOptions)
+  adjacency = WGCNA::adjacency(expr.data, power = beta, type = net.type, corOptions = corOptions)
   print("Created")
   print(paste0("Adjacency is the following within getAndPlotNetworkLong"))
   print(adjacency[1:5,1:5])
@@ -621,10 +621,10 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
   # Turn adjacency into topological overlap
   print("Creating TOM")
   if(net.type == "signed")
-    TOM = TOMsimilarity(adjacency)
+    TOM = WGCNA::TOMsimilarity(adjacency)
   else if(net.type == "unsigned"){
     cat("As the network type is unsigned, the TOM type we'll create is signed")
-    TOM = TOMsimilarity(adjacency,TOMType="signed")
+    TOM = WGCNA::TOMsimilarity(adjacency,TOMType="signed")
   }else{
     stop(paste0("Nework type ",net.type," unrecognized when creating the network"))
   }
@@ -642,7 +642,7 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
   # Call the hierarchical clustering function that makes the clustering
   # dendrogram to grow until the leaves are genes
 
-  geneTree = flashClust(as.dist(dissTOM), method = "average")
+  geneTree = flashClust::flashClust(as.dist(dissTOM), method = "average")
 
   print("Now the genetree")
   print(geneTree)
@@ -653,7 +653,7 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
   n.mods = 0
   deep.split = 2
   while(n.mods < 10 & deep.split < 5){
-    dynamicMods = cutreeDynamic(dendro = geneTree, distM = dissTOM, deepSplit = deep.split,
+    dynamicMods = dynamicTreeCut::cutreeDynamic(dendro = geneTree, distM = dissTOM, deepSplit = deep.split,
                                 pamRespectsDendro = FALSE, minClusterSize = min.cluster.size)
     n.mods = length(table(dynamicMods))
     deep.split = deep.split + 1
@@ -665,21 +665,21 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
 
   # Convert numeric lables into colors
   #This will print the same, but using as label for modules the corresponding colors
-  dynamicColors = labels2colors(dynamicMods)
+  dynamicColors = WGCNA::labels2colors(dynamicMods)
   print(tb <- table(dynamicColors))
   names(tb) <- paste("ME", names(tb), sep="")
 
   # Calculate eigengenes
-  MEList = moduleEigengenes(expr.data, colors = dynamicColors, excludeGrey=excludeGrey)
+  MEList = WGCNA::moduleEigengenes(expr.data, colors = dynamicColors, excludeGrey=excludeGrey)
   MEs = MEList$eigengenes
   # Calculate dissimilarity of module eigengenes
   MEDiss = 1-cor(MEs)
   # Cluster module eigengenes
-  METree = flashClust(as.dist(MEDiss), method = "average")
+  METree = flashClust::flashClust(as.dist(MEDiss), method = "average")
 
   MEDissThres = 0.1 #### MERGING THRESHOLD
   # Call an automatic merging function
-  merge = mergeCloseModules(expr.data, dynamicColors, cutHeight = MEDissThres,
+  merge = WGCNA::mergeCloseModules(expr.data, dynamicColors, cutHeight = MEDissThres,
                             verbose = 3, unassdColor="grey",getNewUnassdME = FALSE)
   # The merged module colors
   mergedColors = merge$colors
@@ -691,7 +691,7 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
     eigengenes.name = paste0(additional.prefix,"_Eigengenes_clustering.pdf")
 
     pdf(file=dendro.name)
-    plotDendroAndColors(geneTree, cbind(dynamicColors, mergedColors),
+    WGCNA::plotDendroAndColors(geneTree, cbind(dynamicColors, mergedColors),
                         c("Dynamic Tree Cut", "Merged dynamic"),dendroLabels = FALSE,
                         hang = 0.03, addGuide = TRUE,
                         guideHang = 0.05,main=title)
@@ -923,7 +923,7 @@ corWithCatTraits = function(tissue,which.one,covlist,covs=NULL){
                                   colnames(covs)[factor.mask])
   moduleTraitPvalue = -log10(moduleTraitPvalue)
   moduleTraitPvalue[moduleTraitPvalue > 10] = 10
-  labeledHeatmap(Matrix=moduleTraitPvalue,
+  WGCNA::labeledHeatmap(Matrix=moduleTraitPvalue,
                  xLabels=colnames(moduleTraitPvalue),
                  yLabels=gsub("ME","",names(MEs)),
                  ySymbols=names(MEs),
@@ -941,13 +941,13 @@ corWithNumTraits = function(tissue,which.one,covlist,covs=NULL){
     covs = getCovariates(tissue=tissue,which.one=which.one)
   covs = covs[,covlist]
   moduleTraitCor = cor(MEs, covs, use = "p")
-  moduleTraitPvalue = corPvalueStudent(moduleTraitCor, nrow(MEs))
+  moduleTraitPvalue = WGCNA::corPvalueStudent(moduleTraitCor, nrow(MEs))
   textMatrix = paste(signif(moduleTraitCor, 2), "\n(",
                      signif(moduleTraitPvalue, 1), ")", sep = "")
   dim(textMatrix) = dim(moduleTraitCor)
   par(mar = c(6, 8.5, 3, 3));
   # Display the correlation values within a heatmap plot
-  labeledHeatmap(Matrix = moduleTraitCor,
+  WGCNA::labeledHeatmap(Matrix = moduleTraitCor,
                  xLabels = covlist,
                  yLabels = names(MEs),
                  ySymbols = names(MEs),
