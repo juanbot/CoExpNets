@@ -1,5 +1,32 @@
 
 
+#' Title
+#'
+#' @param netf The RDS file produced by getDownstreamNetwork()
+#' @param folder This method will produce enrichment files. This variable
+#' indicates where to store them
+#' @param which.one Category under which the network should be installed.
+#' If new, the category will be created
+#' @param tissue A label to designate the network under the category
+#' @param rewrite If TRUE and the network is already added with that name
+#' under the category, it is overwritten with the new material
+#' @param filter gProfiler parameter to indicate which annotation databases to
+#' use when assessing for enrichment at the network modules
+#' @param ensembl Whether the gene names are indicated as Ensembl ids or Symbols
+#' @param do.go If FALSE the annotation databases enrichment is not perfomed
+#' @param do.ct If FALSE the cell enrichment is not performed. Note that cell
+#' enrichment works fine for brain. Not so good for other tissues or conditions.
+#' @param exclude.iea gProfiler parameter to indicate that if FALSE,
+#' inferred annotations from GO are not used
+#' @param correction.method gProfiler parameter to indicate the p.value adjustment method
+#' @param organism gProfiler parameter to indicate the organism upon which genes are defined
+#' @param out.file Optional file to allocate the GO enrichment
+#'
+#' @return This method updates the global variable coexp.nets with a new entry to it can
+#' be used with the rest of methods of the package
+#' @export
+#'
+#' @examples
 addNetworkToDDBB = function(netf,folder,
                             which.one,
                             tissue,
@@ -74,6 +101,20 @@ loadDDBB = function(filein,outtmp="/tmp/tempddbb.txt"){
   cat("Loading",nrow(coexp.nets),"from",filein,"\n")
 }
 
+#' Title
+#'
+#' @param which.one The category under which the network is under
+#' @param tissue The name of the network under the category
+#' @param netfile The RDS file produced by getDownstreamNetwork()
+#' @param ctfile The file name of cell type enrichment for the network modules
+#' @param gofile The Gene Ontology and others enrichment of modules in the network
+#' @param exprdatafile Expression data used to generate the network
+#' @param overwrite If TRUE and the network is already added, it overwrites the contents
+#'
+#' @return
+#' @export
+#'
+#' @examples
 addNet = function(which.one,tissue,netfile,ctfile,gofile,exprdatafile,overwrite){
 
   if(!exists("coexp.nets"))
@@ -105,24 +146,6 @@ getAvailableNetworks = function(category="rosmap"){
   return(NULL)
 }
 
-initDbGTEX = function(mandatory=F){
-  if(!dir.exists("supplementary/rdsnets/gtexv6/") & mandatory)
-    stop("GTEx networks are not available\n")
-
-  if(!dir.exists("supplementary/rdsnets/gtexv6/")){
-    cat("GTEx networks won´t be available, you have to install them\n")
-    return
-  }
-
-  nets = getGTExTissues()
-  for(net in nets){
-    addNet("gtexv6",net,getGTExNet(net),
-                                            paste0(getGTExNet(net),"_celltype.csv"),
-                                            paste0(getGTExNet(net),"_gprof.csv"),
-                                            paste0("supplementary/rdsnets/gtexv6/",
-                                                   getGTExNet(net),".resids.rds"))
-  }
-}
 
 initExonic = function(mandatory=F){
 
@@ -312,29 +335,6 @@ getMicTissues = function(){
            "THAL", "WHMT"))
 }
 
-getGTExNet = function(tissue){
-
-  the.dir = paste0("supplementary/rdsnets/gtexv6/")
-  files = list.files(the.dir)
-
-  net.file = files[grep(paste0("net",tissue,"\\.\\d+\\.it\\.50\\.rds$"),files)]
-  if(length(net.file) == 0)
-    return(NULL)
-
-  return(paste0(the.dir,net.file))
-}
-
-getGTExTissues = function(){
-
-  the.dir = paste0("supplementary/rdsnets/gtexv6/")
-  files = list.files(the.dir)
-
-  net.files = files[grep("net\\w+\\.\\d+\\.it\\.50\\.rds$",files)]
-  net.files = gsub("net","",net.files)
-  net.files = gsub(".\\d+\\.it\\.50\\.rds$","",net.files)
-
-  return(net.files)
-}
 
 
 getInfoFromTissue = function(which.one,tissue,what,...){
