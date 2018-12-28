@@ -66,10 +66,10 @@ reportOnFETGenes = function(tissue,genes,which.one,net){
 
 
 reportOnGenes = function(tissue,genes,silent=F,
-                               which.one="signedrnaseq",
-                               mantel.its=1000,alt.probes=NULL,include.pd=T,
-                               ens.correction=NULL,
-                               gwases=NULL){
+                         which.one="signedrnaseq",
+                         mantel.its=1000,alt.probes=NULL,include.pd=T,
+                         ens.correction=NULL,
+                         gwases=NULL){
 
   #Everything will be turned into Ensembl
   net = getNetworkFromTissue(tissue=tissue,which.one=which.one)
@@ -112,7 +112,7 @@ reportOnGenes = function(tissue,genes,silent=F,
             def.mod = net$moduleColors[probe.id.index]
             cat("We will use",def.mod,"\n")
             mm = getMM(net=net,expr.data.file=expr.data,
-                             genes=en.gene,alt.gene.index=probe.id.index)
+                       genes=en.gene,alt.gene.index=probe.id.index)
           }
         }
 
@@ -121,19 +121,19 @@ reportOnGenes = function(tissue,genes,silent=F,
           cat("We will use", gene,"found in module",def.mod,"in ",tissue,"\n")
           mod = paste0(mod,collapse=", ")
           mm = getMM(net=net,expr.data.file=expr.data,
-                           genes=en.gene)
+                     genes=en.gene)
 
         }
         report = reportOnModule(tissue,def.mod,which.one=which.one,
-                                      mantel.its=mantel.its,include.pd=include.pd)
+                                mantel.its=mantel.its,include.pd=include.pd)
         mod = def.mod
 
       }else{
         cat("Gene found in module",mod,"in ",tissue,"\n")
         report = reportOnModule(tissue,mod,which.one=which.one,
-                                      mantel.its=mantel.its,include.pd=include.pd)
+                                mantel.its=mantel.its,include.pd=include.pd)
         mm = getMM(net=net,expr.data.file=expr.data,
-                         genes=en.gene)
+                   genes=en.gene)
 
       }
       gene = fromAny2GeneName(gene)
@@ -240,13 +240,13 @@ reportOnGenes = function(tissue,genes,silent=F,
 }
 
 reportOnGenesMultipleTissue = function(tissues,genes,silent=F,
-                                             which.one="signedrnaseq",
-                                             mantel.its=1000,
-                                             alt.probes=NULL,
-                                             out.file=NULL,
-                                             include.pd=T,
-                                             gwases=NULL,
-                                             mod.level.correct=T){
+                                       which.one="signedrnaseq",
+                                       mantel.its=1000,
+                                       alt.probes=NULL,
+                                       out.file=NULL,
+                                       include.pd=T,
+                                       gwases=NULL,
+                                       mod.level.correct=T){
 
   if(is.null(genes) & which.one == "micro19K")
     genes = names(getNetworkFromTissue(tissue="SNIG",which.one="micro19K")$moduleColors)
@@ -263,9 +263,9 @@ reportOnGenesMultipleTissue = function(tissues,genes,silent=F,
 
     }
     tissue.report = reportOnGenes(tissue=tissue,
-                                        genes=genes,silent=silent,
-                                        which.one=which.one,
-                                        mantel.its=mantel.its,alt.probes=alt.probes,include.pd=include.pd,gwases=gwases)
+                                  genes=genes,silent=silent,
+                                  which.one=which.one,
+                                  mantel.its=mantel.its,alt.probes=alt.probes,include.pd=include.pd,gwases=gwases)
     if(!is.null(tissue.report$report)){
       problematic.genes[[tissue]] = tissue.report$mult.genes
       tissue.report = tissue.report$report
@@ -285,7 +285,7 @@ reportOnGenesMultipleTissue = function(tissues,genes,silent=F,
     modules = 0
     for(tissue in tissues)
       modules = modules + length(getModulesFromTissue(tissue=tissue,
-                                                            which.one=which.one))
+                                                      which.one=which.one))
     bonf = out.table$p.val.mods * modules
     bonf[bonf > 1] = 1
     out.table = cbind(out.table,bonf)
@@ -333,8 +333,8 @@ functionalReportOnModule = function(tissue="SNIG",module,which.one="rnaseq"){
 }
 
 reportOnModule = function(tissue="SNIG",module,which.one="rnaseq",how.many=5,
-                                include.pd=T,mantel.its=1000,simple.cell.types=F,
-                                cell.type.threshold=0.05,ctcollapse=T){
+                          include.pd=T,mantel.its=1000,simple.cell.types=F,
+                          cell.type.threshold=0.05,ctcollapse=T){
 
   tmp.report = reportGet(which.one,tissue,module)
   if(!is.null(tmp.report)){
@@ -448,7 +448,7 @@ reportOnModule = function(tissue="SNIG",module,which.one="rnaseq",how.many=5,
 
     #We include cell types here
     cell.types = cellTypeByModule(tissue=tissue,do.plot=F,which.one=which.one,
-                                        return.processed=F)
+                                  return.processed=F)
     cell.type.report = "void"
     if(any(colnames(cell.types) %in% module)){
       cell.types = cell.types[order(cell.types[,module],decreasing=F),]
@@ -515,7 +515,7 @@ reportOnModule = function(tissue="SNIG",module,which.one="rnaseq",how.many=5,
   }
   #We include cell types here
   cell.types = cellTypeByModule(tissue=tissue,do.plot=F,which.one=which.one,
-                                      return.processed=F)
+                                return.processed=F)
   cell.type.report = "void"
   if(any(colnames(cell.types) %in% module)){
     cell.types = cell.types[order(cell.types[,module],decreasing=F),]
@@ -542,11 +542,11 @@ reportOnModule = function(tissue="SNIG",module,which.one="rnaseq",how.many=5,
   }
   if(which.one == "micro19K"){
     preservation = getZsummary10MicTissues1Module(tissue=tissue,
-                                                        module=module)
+                                                  module=module)
 
     to.return = list(module=module,
                      size=length(getGenesFromModule(tissue=tissue,which.one=which.one,
-                                                          module=module)),
+                                                    module=module)),
                      go.report=go.report,
                      pd.genes=pd.genes,
                      min.prev=preservation$min,
@@ -561,7 +561,7 @@ reportOnModule = function(tissue="SNIG",module,which.one="rnaseq",how.many=5,
       preservation = "void"
     to.return = list(module=module,
                      size=length(getGenesFromModule(tissue=tissue,which.one=which.one,
-                                                          module=module)),
+                                                    module=module)),
                      go.report=go.report,
                      pd.genes=pd.genes,
                      preservation=preservation,
@@ -573,7 +573,7 @@ reportOnModule = function(tissue="SNIG",module,which.one="rnaseq",how.many=5,
 }
 
 reportOnModuleReplication = function(tissue="SNIG",module,
-                                           which.one="exonic",mantel.its=1000){
+                                     which.one="exonic",mantel.its=1000){
 
   #Note that only the combination binary-between and co-expression within make sense
   #The other two are not good
@@ -619,8 +619,8 @@ reportOnModuleReplication = function(tissue="SNIG",module,
 }
 
 getZSummary = function(tissue="SNIG",
-                             modules=c("red"),
-                             which.one="signedrnaseq"){
+                       modules=c("red"),
+                       which.one="signedrnaseq"){
 
   if(is.null(modules))
     modules = unique(getNetworkFromTissue(tissue=tissue,which.one=which.one)$moduleColors)
@@ -688,9 +688,9 @@ getZsummary10MicTissues1Module = function(tissue,module){
                      ".mic.net.19K.rds_preserv.rds","Zsummary.csv")
     if(!file.exists(file.in))
       getPreservationStatistics(networks=list(othernet,tnet),
-                                      tissues=c(othertissue,tissue),
-                                      paste0("supplementary/rdsnets/micro19K/",othertissue,".mic.net.19K.rds_vs_",tissue,
-                                             ".mic.net.19K.rds_preserv.rds"))
+                                tissues=c(othertissue,tissue),
+                                paste0("supplementary/rdsnets/micro19K/",othertissue,".mic.net.19K.rds_vs_",tissue,
+                                       ".mic.net.19K.rds_preserv.rds"))
 
     pr = read.csv(file=file.in,stringsAsFactors=F)
     if(sum(pr$tissue == tissue & pr$color == module) == 0)
@@ -707,10 +707,10 @@ getZsummary10MicTissues1Module = function(tissue,module){
                      ".mic.net.19K.rds_preserv.rds","Zsummary.csv")
     if(!file.exists(file.in))
       getPreservationStatistics(networks=list(tnet,othernet),
-                                      tissues=c(tissue,othertissue),
-                                      paste0("supplementary/rdsnets/micro19K/",
-                                             tissue,".mic.net.19K.rds_vs_",othertissue,
-                                             ".mic.net.19K.rds_preserv.rds"))
+                                tissues=c(tissue,othertissue),
+                                paste0("supplementary/rdsnets/micro19K/",
+                                       tissue,".mic.net.19K.rds_vs_",othertissue,
+                                       ".mic.net.19K.rds_preserv.rds"))
     pr = read.csv(file=file.in,stringsAsFactors=F)
     if(sum(pr$tissue == tissue & pr$color == module) == 0)
       stop(paste0("When checking preservation of ",module," from tissue ",tissue,
@@ -869,7 +869,7 @@ UserGOenrichment <- function(net.file,net.name=NULL,which.one="exonic",do.plot=F
     pdf(paste0(net.file,".go_user_zscores.pdf"),width=8,height=6)
     plotGOZScoresUserList(enrichments,net,
                           title=paste0("User enrichment. Sum z-s (p-val < 10e-2), ",
-                                                             net.name))
+                                       net.name))
     dev.off()
   }
   write.csv(enrichments$sigOverlaps,out.file)
@@ -886,14 +886,13 @@ UserGOenrichment <- function(net.file,net.name=NULL,which.one="exonic",do.plot=F
 #correction.method	: method for multiple testing correction (see gProfileR docs)
 #out.file			: full name for the csv file where to store results
 #incluster			: ignore that one
-getGProfilerOnNet <- function(net.file=snig.exonic.net.file,
-                                    filter=c("GO","KEGG","REAC"),
-                                    ensembl=TRUE,
-                                    exclude.iea=T,
+getGProfilerOnNet <- function(net.file,
+                              filter=c("GO","KEGG","REAC"),
+                              ensembl=TRUE,
+                              exclude.iea=T,
                               organism = "hsapiens",
-                                    correction.method="gSCS",
-
-                                    out.file=paste0(net.file,"_gprofiler.csv"),...){
+                              correction.method="gSCS",
+                              out.file=paste0(net.file,"_gprofiler.csv"),...){
 
   if(typeof(net.file) == "character")
     net <- readRDS(net.file)
@@ -915,11 +914,11 @@ getGProfilerOnNet <- function(net.file=snig.exonic.net.file,
   }
 
   go <- gProfileR::gprofiler(all.genes,
-                  correction_method=correction.method,
-                  #custom_bg=background,
-                  src_filter=filter,
-                  organism=organism,
-                  exclude_iea=exclude.iea)
+                             correction_method=correction.method,
+                             #custom_bg=background,
+                             src_filter=filter,
+                             organism=organism,
+                             exclude_iea=exclude.iea)
   #png_fn = paste0(out.file,".png"),
   #no_isects=T)
   go.out = cbind(go,rep(NA,nrow(go)))
@@ -1051,15 +1050,15 @@ getFriendlyNameForColumnCategories = function(cats){
 #The pdf file with the signals will be generated at plot.file location (can be used as a prefix)
 #for the pdf file as in the default
 cellTypeByModule = function(tissue="None",
-                                  do.plot=T,
-                                  which.one="new",
-                                  plot.file,
-                                  net.in=NULL,
-                                  legend=NULL,
-                                  threshold=20,
-                                  return.processed=T,
-                                  use.grey=F,
-                                  display.cats=NULL){ #This last flag FALSE when you want the raw p-values
+                            do.plot=T,
+                            which.one="new",
+                            plot.file,
+                            net.in=NULL,
+                            legend=NULL,
+                            threshold=20,
+                            return.processed=T,
+                            use.grey=F,
+                            display.cats=NULL){ #This last flag FALSE when you want the raw p-values
 
   cat("Entering cellTypeByModue with",which.one,"\n")
 
@@ -1122,7 +1121,7 @@ cellTypeByModule = function(tissue="None",
     if(!file.exists(file.name) | is.any.network){
       cat("Generating new user enrichment\n")
       UserGOenrichment(net.file=getNetworkFromTissue(tissue,"braineac"),
-                             net.name=newmic.getNetName(tissue))
+                       net.name=newmic.getNetName(tissue))
     }
     enrichment = read.csv(file.name,stringsAsFactors=F)
   }else if(which.one == "new"){
@@ -1130,7 +1129,7 @@ cellTypeByModule = function(tissue="None",
     #if(!file.exists(file.name)){
     cat("Generating new user enrichment into ",file.name,"\n")
     UserGOenrichment(net.file=net,
-                           net.name=net.in)
+                     net.name=net.in)
     cat("Done generating new User enrichment\n")
     #}
     enrichment = read.csv(file.name,stringsAsFactors=F)
@@ -1233,18 +1232,18 @@ cellTypeByModule = function(tissue="None",
 }
 
 genAnnotationCellType = function(tissue="None",
-                                       which.one="new",
-                                       markerspath,
-                                       net.in=NULL,
-                                       legend=NULL,
-                                       plot.file=NULL,
-                                       threshold=20,
-                                       return.processed=T,
-                                       getMarkerSize=F,
-                                       getOnlyOverlap=F,
-                                       getMyOwnTest=F,
-                                       applyFDR=F,
-                                       display.cats=NULL){ #This last flag FALSE when you want the raw p-values
+                                 which.one="new",
+                                 markerspath,
+                                 net.in=NULL,
+                                 legend=NULL,
+                                 plot.file=NULL,
+                                 threshold=20,
+                                 return.processed=T,
+                                 getMarkerSize=F,
+                                 getOnlyOverlap=F,
+                                 getMyOwnTest=F,
+                                 applyFDR=F,
+                                 display.cats=NULL){ #This last flag FALSE when you want the raw p-values
 
   cat("Entering genAnnotationCellType with",which.one,"\n")
 
@@ -1310,7 +1309,7 @@ genAnnotationCellType = function(tissue="None",
       #print(names(net$moduleColors)[net$moduleColors == m])
       #print(submarkers)
       return(testGeneSet(n.module=nm,total.specific=length(submarkers),
-                               total.net=length(net$moduleColors),n.module.and.specific=ov)$p.value)
+                         total.net=length(net$moduleColors),n.module.and.specific=ov)$p.value)
     })
 
     overlap = outer(modules,files,myfunction)
@@ -1382,16 +1381,16 @@ genAnnotationCellType = function(tissue="None",
 }
 
 annotateByCellType = function(tissue="None",
-                                    do.plot=T,
-                                    which.one="new",
-                                    plot.file,
-                                    net.in=NULL,
-                                    legend=NULL,
-                                    threshold=20,
-                                    return.processed=T,
-                                    use.grey=F,
-                                    tmpfolder="/tmp/",
-                                    display.cats=NULL){ #This last flag FALSE when you want the raw p-values
+                              do.plot=T,
+                              which.one="new",
+                              plot.file,
+                              net.in=NULL,
+                              legend=NULL,
+                              threshold=20,
+                              return.processed=T,
+                              use.grey=F,
+                              tmpfolder="/tmp/",
+                              display.cats=NULL){ #This last flag FALSE when you want the raw p-values
 
   cat("Entering annotateByCellType ",which.one,"\n")
   data("coexp.ukbec.cell.types")
@@ -1441,7 +1440,7 @@ annotateByCellType = function(tissue="None",
     #if(!file.exists(file.name)){
     cat("Generating new user enrichment into ",file.name,"\n")
     UserGOenrichment(net.file=net,
-                           net.name=net.in)
+                     net.name=net.in)
     print("Done generating new User enrichment\n")
     #}
     enrichment = read.csv(file.name,stringsAsFactors=F)
@@ -1478,8 +1477,8 @@ annotateByCellType = function(tissue="None",
   input.file.names = unlist(lapply(coexp.ukbec.cell.files,function(x){
     return(system.file("", x, package = "CoExpNets"))}))
   input.file.names = c(input.file.names,unlist(lapply(paste0("cell_type_TableS1.csv.",colnames(external.ref),".txt"),
-                                               function(x){
-                                                 return(system.file("", x, package = "CoExpNets"))})))
+                                                      function(x){
+                                                        return(system.file("", x, package = "CoExpNets"))})))
 
 
   cell.types.i.f = c(coexp.ukbec.cell.types,colnames(external.ref))

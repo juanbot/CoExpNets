@@ -44,6 +44,152 @@ plotMDS = function(rpkms.net,path,covs,covvars,label,n.mds=-1){
 
 }
 
+#' Title
+#'
+#' @param mode
+#' @param expr.data
+#' @param n.iterations
+#' @param job.path
+#' @param allsampsnet
+#' @param each
+#' @param tissue
+#' @param b
+#' @param ...
+#'
+#' @return
+#' @export
+#'
+#' @examples
+getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
+                               expr.data,
+                               n.iterations=10,
+                               job.path,
+                               allsampsnet=F,
+                               each=1,
+                               tissue="Bootstrap",
+                               b=10,...){
+  print(expr.data[1:5,1:5])
+  if(typeof(expr.data) == "character")
+    expr.data = readRDS(expr.data)
+
+  #Lets create indexes
+  indexes = NULL
+  if(mode == "leaveoneout"){
+    lapply(1:nrow(expr.data),function(x){
+      indexes <<- rbind(indexes,(1:nrow(expr.data))[-x])
+    })
+  }else if(mode == "bootstrap"){
+    lapply(1:b,function(x){
+      indexes <<- rbind(indexes,sample(1:nrow(expr.data),nrow(expr.data),replace=T))
+    })
+  }else stop(paste0("Mode",mode,"unknown\n"))
+
+  print(indexes)
+
+  ngenes = ncol(expr.data)
+  TOM = matrix(nrow = ngenes,ncol=ngenes)
+  TOM[] = 0
+  count = 0
+  allclusters = NULL
+  allsubnets = NULL
+  for(i in 1:nrow(indexes)){
+    count = count + 1
+    lexpr.data = expr.data[indexes[i,],]
+    if(mode == "bootstrap"){
+      maskd = duplicated(rownames(lexpr.data))
+      while(sum(maskd)){
+        rownames(lexpr.data)[maskd] = paste0(rownames(lexpr.data)[maskd],"_d")
+        maskd = duplicated(rownames(lexpr.data))
+        print(maskd)
+      }
+
+    }
+    net = getDownstreamNetwork(expr.data=lexpr.data,
+                         tissue=paste0(tissue,"_b_",i),
+                         job.path=job.path,
+                         save.plots=F,
+                         n.iterations=0,
+                         save.tom=T,...)
+
+    cat("Accumulating TOM",count,"\n")
+    TOM = TOM + readRDS(net$tom)
+    file.remove(net$tom)
+    file.remove(net$net)
+
+    if(count %% each == 0 | count == nrow(indexes)){
+      dissTOM = 1 - TOM/count
+      geneTree = flashClust(as.dist(dissTOM), method = "average")
+      print("Now the genetree")
+      n.mods = 0
+      deep.split = 2
+      while(n.mods < 10 & deep.split < 5){
+        dynamicMods = cutreeDynamic(dendro = geneTree,
+                                    distM = dissTOM,
+                                    deepSplit = deep.split,
+                                    pamRespectsDendro = FALSE,
+                                    minClusterSize = 100)
+        n.mods = length(table(dynamicMods))
+        deep.split = deep.split + 1
+      }
+      rm(dissTOM)
+      print(table(dynamicMods))
+
+      # Convert numeric lables into colors
+      #This will print the same, but using as label for modules the corresponding colors
+      dynamicColors = labels2colors(dynamicMods)
+      net$subcluster = dynamicColors
+
+    }
+    net$indexes = indexes[i,]
+    allsubnets[[i]] = net
+  }
+  finalnet = NULL
+  finalnet$beta = as.integer(mean(unlist(lapply(allsubnets,function(x){return(x$beta)}))))
+  finalnet$file = paste0(job.path,"/netBoot",tissue,".",finalnet$beta,".it.",n.iterations,".b.",nrow(indexes),".rds")
+  finalnet$tom = paste0(finalnet$file,".tom.rds")
+  TOM = TOM/count
+  adjacency = apply(TOM,2,sum)
+  adjacency = adjacency/length(adjacency)
+  names(adjacency) = colnames(expr.data)
+  saveRDS(TOM,finalnet$tom)
+  finalnet$adjacency = adjacency
+  finalnet$moduleColors = dynamicColors
+  finalnet$moduleLabels = dynamicMods
+  finalnet$subnets = allsubnets
+
+  outnet = applyKMeans(tissue=tissue,
+                       n.iterations=n.iterations,
+                       net.file=finalnet,
+                       tom=finalnet$tom,
+                       expr.data=expr.data,
+                       plot.evolution=F,
+                       beta=finalnet$beta,
+                       job.path=job.path,
+                       final.net=finalnet$file)
+  kmnet = readRDS(finalnet$file)
+  finalnet$moduleColors = kmnet$moduleColors
+  finalnet$MEs = kmnet$MEs
+  finalnet$mode = mode
+
+  if(allsampsnet){
+    fallsamplesnet = getDownstreamNetwork(expr.data=expr.data,
+                                          tissue=paste0(tissue,"_allsamps_"),
+                                          job.path=job.path,
+                                          save.plots=F,
+                                          n.iterations=n.iterations,
+                                          save.tom=F,...)$net
+    finalnet$allsamplesnet = readRDS(fallsamplesnet)
+    file.remove(fallsamplesnet)
+  }
+
+
+  saveRDS(finalnet,finalnet$file)
+  return(finalnet$file)
+
+}
+
+
+
 
 #' getDownstreamNetwork - Create a network
 #'
@@ -207,10 +353,6 @@ plotModSizes = function(which.one,tissue){
 generateBetaStudy <- function(expr.data,powers=c(1:30),title=NULL,plot.file=NULL,
                               net.type="signed",cor.type="pearson"){
   stopifnot(cor.type == "pearson" | cor.type == "spearman")
-  if(!is.null(plot.file))
-    pdf(plot.file,width=18,height=8)
-
-  old.par <- par()
 
   if(cor.type == "pearson")
     sft = WGCNA::pickSoftThreshold(expr.data,powerVector=powers,verbose=5,moreNetworkConcepts=TRUE,
@@ -219,6 +361,12 @@ generateBetaStudy <- function(expr.data,powers=c(1:30),title=NULL,plot.file=NULL
     sft = WGCNA::pickSoftThreshold(expr.data,powerVector=powers,verbose=5,moreNetworkConcepts=TRUE,
                             networkType=net.type,corFn=stats::cor,corOptions=list(method = "spearman"))
 
+  if(!is.null(plot.file)){
+
+
+    pdf(plot.file,width=18,height=8)
+
+  old.par <- par()
   par(mfrow=c(1,2))
   cex1=0.9
   #Plotting the adjustment level
@@ -242,10 +390,11 @@ generateBetaStudy <- function(expr.data,powers=c(1:30),title=NULL,plot.file=NULL
        cex=cex1)
 
   par(old.par)
-  if(!is.null(plot.file)){
     dev.off()
     write.csv(sft$fitIndices,paste0(plot.file,".csv"))
+
   }
+
 
   sft
 }
