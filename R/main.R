@@ -747,7 +747,7 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
   names(net$moduleColors) <- gene.names
   net$geneTree <- geneTree
   if(return.tom){
-    return(list(net=net,tom=1 + dissTOM))
+    return(list(net=net,tom=(1 - dissTOM)))
   }else
     return(net)
 }
