@@ -62,11 +62,12 @@ plotMDS = function(rpkms.net,path,covs,covvars,label,n.mds=-1){
 #' @examples
 getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
                                expr.data,
-                               n.iterations=10,
+                               n.iterations=50,
                                job.path,
                                allsampsnet=F,
                                each=1,
                                tissue="Bootstrap",
+                               clusterize=F,
                                b=10,...){
   print(expr.data[1:5,1:5])
   if(typeof(expr.data) == "character")
@@ -92,6 +93,8 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
   count = 0
   allclusters = NULL
   allsubnets = NULL
+  if(clusterize)
+    handlers = NULL
   for(i in 1:nrow(indexes)){
     count = count + 1
     lexpr.data = expr.data[indexes[i,],]
@@ -104,45 +107,117 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
       }
 
     }
-    net = getDownstreamNetwork(expr.data=lexpr.data,
-                         tissue=paste0(tissue,"_b_",i),
-                         job.path=job.path,
-                         save.plots=F,
-                         n.iterations=0,
-                         save.tom=T,...)
+    ltissue = paste0(tissue,"_b_",i)
+    if(!clusterize){
+      net = getDownstreamNetwork(expr.data=lexpr.data,
+                                 tissue=ltissue,
+                                 job.path=job.path,
+                                 save.plots=F,
+                                 n.iterations=0,
+                                 save.tom=T,...)
 
-    cat("Accumulating TOM",count,"\n")
-    TOM = TOM + readRDS(net$tom)
-    file.remove(net$tom)
-    file.remove(net$net)
+      cat("Accumulating TOM",count,"\n")
+      TOM = TOM + readRDS(net$tom)
+      file.remove(net$tom)
+      file.remove(net$net)
 
-    if(count %% each == 0 | count == nrow(indexes)){
-      dissTOM = 1 - TOM/count
-      geneTree = flashClust(as.dist(dissTOM), method = "average")
-      print("Now the genetree")
-      n.mods = 0
-      deep.split = 2
-      while(n.mods < 10 & deep.split < 5){
-        dynamicMods = cutreeDynamic(dendro = geneTree,
-                                    distM = dissTOM,
-                                    deepSplit = deep.split,
-                                    pamRespectsDendro = FALSE,
-                                    minClusterSize = 100)
-        n.mods = length(table(dynamicMods))
-        deep.split = deep.split + 1
+      if(count %% each == 0 | count == nrow(indexes)){
+        dissTOM = 1 - TOM/count
+        geneTree = flashClust(as.dist(dissTOM), method = "average")
+        print("Now the genetree")
+        n.mods = 0
+        deep.split = 2
+        while(n.mods < 10 & deep.split < 5){
+          dynamicMods = cutreeDynamic(dendro = geneTree,
+                                      distM = dissTOM,
+                                      deepSplit = deep.split,
+                                      pamRespectsDendro = FALSE,
+                                      minClusterSize = 100)
+          n.mods = length(table(dynamicMods))
+          deep.split = deep.split + 1
+        }
+        rm(dissTOM)
+        print(table(dynamicMods))
+
+        # Convert numeric lables into colors
+        #This will print the same, but using as label for modules the corresponding colors
+        dynamicColors = labels2colors(dynamicMods)
+        net$subcluster = dynamicColors
+
       }
-      rm(dissTOM)
-      print(table(dynamicMods))
+      net$indexes = indexes[i,]
+      allsubnets[[i]] = net
+    }else{
+      params = NULL
+      params$its = n.iterations
+      params$outfolder = job.path
+      params$datain = lexpr.data
+      params$save.tom =T
+      params$tissue = ltissue
+      params$fun = function(tissue,datain,its,outfolder,save.tom){
+        library(CoExpNets)
+        genes = colnames(datain)
+        sampids = rownames(datain)
+        datain = log2(1 + as.matrix(datain))
+        colnames(datain) = genes
+        rownames(datain) = sampids
 
-      # Convert numeric lables into colors
-      #This will print the same, but using as label for modules the corresponding colors
-      dynamicColors = labels2colors(dynamicMods)
-      net$subcluster = dynamicColors
+        net = getDownstreamNetwork(tissue=tissue,
+                                   n.iterations=its,
+                                   save.tom = save.tom,
+                                   save.plots = F,
+                                   exCludeGrey = F,
+                                   beta=-1,
+                                   net.type = "signed",
+                                   debug=F,
+                                   expr.data=datain,
+                                   job.path=outfolder)
+        return(net)
 
+      }
+      handlers[[i]] = launchJob(parameters = params,clParams = clparams,prefix=paste0("Dervis",tissue))
     }
-    net$indexes = indexes[i,]
-    allsubnets[[i]] = net
+
+
   }
+
+  if(clusterize){
+    nets = waitForJobs(handlers=handlers,removeData=F,removeLogs=F)
+    lapply(nets,function(net){
+      lcount = which(nets == net)
+      cat("Reading TOM",net$tom,"\n")
+      tom = readRDS(net$tom)
+      TOM <<- TOM + tom
+      file.remove(net$tom)
+      #file.remove(net$net)
+
+      if(lcount %% each == 0 | count == nrow(indexes)){
+        dissTOM = 1 - TOM/count
+        geneTree = flashClust(as.dist(dissTOM), method = "average")
+        print("Now the genetree")
+        n.mods = 0
+        deep.split = 2
+        while(n.mods < 10 & deep.split < 5){
+          dynamicMods = cutreeDynamic(dendro = geneTree,
+                                      distM = dissTOM,
+                                      deepSplit = deep.split,
+                                      pamRespectsDendro = FALSE,
+                                      minClusterSize = 100)
+          n.mods = length(table(dynamicMods))
+          deep.split = deep.split + 1
+        }
+        rm(dissTOM)
+        # Convert numeric lables into colors
+        #This will print the same, but using as label for modules the corresponding colors
+        dynamicColors = labels2colors(dynamicMods)
+        net$subcluster = dynamicColors
+
+      }
+      net$indexes = indexes[lcount,]
+      allsubnets[[lcount]] <<- net
+    })
+  }
+
   finalnet = NULL
   finalnet$beta = as.integer(mean(unlist(lapply(allsubnets,function(x){return(x$beta)}))))
   finalnet$file = paste0(job.path,"/netBoot",tissue,".",finalnet$beta,".it.",n.iterations,".b.",nrow(indexes),".rds")
