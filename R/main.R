@@ -73,6 +73,8 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
   if(typeof(expr.data) == "character")
     expr.data = readRDS(expr.data)
 
+  if(cluserize)
+    library(sgefacilities)
   #Lets create indexes
   indexes = NULL
   if(mode == "leaveoneout"){
