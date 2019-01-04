@@ -1,5 +1,38 @@
 
 
+print.bootnet = function(net){
+  cat("A bootstrapped network created with mode",net$mode,"\n",
+      "Soft thresholding parameter (beta):",net$beta,"\n",
+      "Adjacency summary\n")
+  print(summary(net$adjacency))
+  cat("Final number of modules",length(unique(net$moduleColors)),"\n")
+  cat("All samples net final number of modules",
+      length(unique(net$allsamplesnet$moduleColors)),"\n")
+
+  rdiffs = NULL
+  fdiffs = NULL
+  adiffs = NULL
+  clusters = NULL
+  for(i in 1:length(net$subnets)){
+    if(!is.null(net$subnets[[i]]$subcluster)){
+      clusters = rbind(clusters,net$subnets[[i]]$subcluster)
+    }
+  }
+
+  for(i in 2:nrow(clusters)){
+    rdiffs = c(rdiffs,mclust::adjustedRandIndex(clusters[i,],clusters[i-1,]))
+    fdiffs = c(fdiffs,mclust::adjustedRandIndex(clusters[i-1,],net$moduleColors))
+    adiffs = c(adiffs,mclust::adjustedRandIndex(clusters[i,],net$allsamplesnet$moduleColors))
+
+  }
+  cat("Successive Rand simmilarities\n")
+  print(rdiffs)
+  cat("Rand differences with all samples net\n")
+  print(adiffs)
+  cat("Rand differences with final net\n")
+  print(fdiffs)
+}
+
 #' plotMDS - Testing gene sepparability with multi-dimensional
 #' scalling.
 #'
@@ -153,10 +186,13 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
   params$expr.data = expr.data
   params$removeTOM = removeTOM
   params$tissue = tissue
+  params$allsampsnet = allsampsnet
   params$n.iterations = n.iterations
-  params$each = 5
+  params$min.cluster.size=min.cluster.size
+  params$each = each
   params$indexes = indexes
   params$job.path = job.path
+  params$mode = mode
   params$fun = postCluster
   singlehandler = launchJob(parameters = params,clParams = " -l nodes=1:nv ",prefix=ltissue,
                             wd=job.path)
@@ -169,9 +205,12 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
 postCluster = function(handlers,
                        expr.data,
                        tissue,
+                       allsampsnet,
                        n.iterations,
+                       min.cluster.size,
                        removeTOM=F,
-                       each=5,
+                       each=1,
+                       mode,
                        indexes,
                        job.path){
   ngenes = ncol(expr.data)
@@ -241,6 +280,24 @@ postCluster = function(handlers,
                                   beta=finalnet$beta,
                                   job.path=job.path,
                                   final.net=finalnet$file)
+
+
+
+  if(allsampsnet){
+    fallsamplesnet = CoExpNets::getDownstreamNetwork(expr.data=expr.data,
+                                                     tissue=paste0(tissue,"_allsamps_"),
+                                                     job.path=job.path,
+                                                     min.cluster.size = min.cluster.size,
+                                                     save.plots=F,
+                                                     excludeGrey=F,
+                                                     net.type="signed",
+                                                     debug=F,
+                                                     n.iterations=n.iterations,
+                                                     save.tom=F)$net
+    finalnet$allsamplesnet = readRDS(fallsamplesnet)
+    file.remove(fallsamplesnet)
+  }
+
   kmnet = readRDS(finalnet$file)
   finalnet$moduleColors = kmnet$moduleColors
   finalnet$MEs = kmnet$MEs
@@ -274,6 +331,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
                                n.iterations=50,
                                job.path,
                                allsampsnet=F,
+                               excludeGrey=F,
                                each=1,
                                min.cluster.size=100,
                                tissue="Bootstrap",
@@ -318,6 +376,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
                                min.cluster.size=min.cluster.size,
                                tissue=ltissue,
                                job.path=job.path,
+                               excludeGrey = excludeGrey,
                                save.plots=F,
                                n.iterations=0,
                                save.tom=T,...)
@@ -358,7 +417,8 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
 
   finalnet = NULL
   finalnet$beta = as.integer(mean(unlist(lapply(allsubnets,function(x){return(x$beta)}))))
-  finalnet$file = paste0(job.path,"/netBoot",tissue,".",finalnet$beta,".it.",n.iterations,".b.",nrow(indexes),".rds")
+  finalnet$file = paste0(job.path,"/netBoot",tissue,".",finalnet$beta,".it.",
+                         n.iterations,".b.",nrow(indexes),".rds")
   finalnet$tom = paste0(finalnet$file,".tom.rds")
   TOM = TOM/count
   adjacency = apply(TOM,2,sum)
@@ -389,8 +449,9 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
                                           tissue=paste0(tissue,"_allsamps_"),
                                           job.path=job.path,
                                           save.plots=F,
+                                          min.cluster.size = min.cluster.size,
                                           n.iterations=n.iterations,
-                                          save.tom=F,...)$net
+                                          save.tom=F)$net
     finalnet$allsamplesnet = readRDS(fallsamplesnet)
     file.remove(fallsamplesnet)
   }
@@ -1045,8 +1106,11 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
   n.mods = 0
   deep.split = 2
   while(n.mods < 10 & deep.split < 5){
-    dynamicMods = dynamicTreeCut::cutreeDynamic(dendro = geneTree, distM = dissTOM, deepSplit = deep.split,
-                                                pamRespectsDendro = FALSE, minClusterSize = min.cluster.size)
+    dynamicMods = dynamicTreeCut::cutreeDynamic(dendro = geneTree, distM = dissTOM,
+                                                deepSplit = deep.split,
+                                                pamRespectsDendro = T,
+                                                respectSmallClusters = F,
+                                                minClusterSize = min.cluster.size)
     n.mods = length(table(dynamicMods))
     deep.split = deep.split + 1
   }
@@ -1062,7 +1126,9 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
   names(tb) <- paste("ME", names(tb), sep="")
 
   # Calculate eigengenes
-  MEList = WGCNA::moduleEigengenes(expr.data, colors = dynamicColors, excludeGrey=excludeGrey)
+  MEList = WGCNA::moduleEigengenes(expr.data,
+                                   colors = dynamicColors,
+                                   excludeGrey=excludeGrey)
   MEs = MEList$eigengenes
   # Calculate dissimilarity of module eigengenes
   MEDiss = 1-cor(MEs)
