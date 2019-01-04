@@ -60,21 +60,21 @@ plotMDS = function(rpkms.net,path,covs,covvars,label,n.mds=-1){
 #' @export
 #'
 #' @examples
-getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
-                               expr.data,
-                               n.iterations=50,
-                               job.path,
-                               allsampsnet=F,
-                               each=1,
-                               tissue="Bootstrap",
-                               clusterize=F,
-                               b=10,...){
+getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
+                                 expr.data,
+                                 n.iterations=50,
+                                 removeTOM=F,
+                                 job.path,
+                                 min.cluster.size=100,
+                                 allsampsnet=F,
+                                 each=1,
+                                 tissue="Bootstrap",
+                                 b=10,...){
   print(expr.data[1:5,1:5])
   if(typeof(expr.data) == "character")
     expr.data = readRDS(expr.data)
 
-  if(cluserize)
-    library(sgefacilities)
+  library(sgefacilities)
   #Lets create indexes
   indexes = NULL
   if(mode == "leaveoneout"){
@@ -87,7 +87,211 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
     })
   }else stop(paste0("Mode",mode,"unknown\n"))
 
-  print(indexes)
+  ngenes = ncol(expr.data)
+  count = 0
+  allclusters = NULL
+  allsubnets = NULL
+  handlers = NULL
+  maskd = NULL
+  for(i in 1:nrow(indexes)){
+    count = count + 1
+    lexpr.data = expr.data[indexes[i,],]
+    if(mode == "bootstrap"){
+      maskd = duplicated(rownames(lexpr.data))
+      while(sum(maskd)){
+
+        rownames(lexpr.data)[maskd] = paste0(rownames(lexpr.data)[maskd],"_d")
+        maskd = duplicated(rownames(lexpr.data))
+      }
+    }
+
+    ltissue = paste0(tissue,"_b_",i)
+    params = NULL
+    params$its = n.iterations
+    params$mode = mode
+    params$outfolder = job.path
+    params$datain = lexpr.data
+    params$min.cluster.size=min.cluster.size
+    params$save.tom =T
+    params$tissue = ltissue
+    params$maskd = maskd
+    params$fun = function(tissue,datain,mode,min,cluster,size,its,outfolder,save.tom,maskd){
+      library(CoExpNets)
+      genes = colnames(datain)
+      sampids = rownames(datain)
+      datain = log2(1 + as.matrix(datain))
+      if(mode == "bootstrap"){
+        maskdi = which(maskd)
+        for(index in maskdi){
+          datain[index,] = jitter(datain[index,])
+        }
+      }
+      colnames(datain) = genes
+      rownames(datain) = sampids
+
+      net = getDownstreamNetwork(tissue=tissue,
+                                 n.iterations=0,
+                                 save.tom = save.tom,
+                                 min.cluster.size=min.cluster.size,
+                                 save.plots = F,
+                                 excludeGrey = F,
+                                 beta=-1,
+                                 net.type = "signed",
+                                 debug=F,
+                                 expr.data=datain,
+                                 job.path=outfolder)
+      return(net)
+
+    }
+    handlers[[i]] = launchJob(parameters = params,clParams = " -l nodes=1:nv ",prefix=ltissue,
+                              wd=job.path)
+  }
+  #Now we send the post job
+  params = NULL
+  ltissue = paste0(tissue,"_b_Final")
+  params$handlers = handlers
+  params$expr.data = expr.data
+  params$removeTOM = removeTOM
+  params$tissue = tissue
+  params$n.iterations = n.iterations
+  params$each = 5
+  params$indexes = indexes
+  params$job.path = job.path
+  params$fun = postCluster
+  singlehandler = launchJob(parameters = params,clParams = " -l nodes=1:nv ",prefix=ltissue,
+                            wd=job.path)
+  handf = paste0(job.path,"/",tissue,"_handlers.rds")
+  handlers[[i+1]] = singlehandler
+  saveRDS(handlers,handf)
+  return(handf)
+}
+
+postCluster = function(handlers,
+                       expr.data,
+                       tissue,
+                       n.iterations,
+                       removeTOM=F,
+                       each=5,
+                       indexes,
+                       job.path){
+  ngenes = ncol(expr.data)
+  TOM = matrix(nrow = ngenes,ncol=ngenes)
+  TOM[] = 0
+  allsubnets = NULL
+  nets = waitForJobs(handlers=handlers,removeData=T,removeLogs=F,qstatworks=F,wd=job.path)
+  lcount = 1
+  for(net in nets){
+    print(net)
+    net = net$result
+    print(net)
+    cat("Reading TOM",net$tom,"\n")
+    tom = readRDS(net$tom)
+    TOM = TOM + tom
+    if(removeTOM)
+      file.remove(net$tom)
+    #file.remove(net$net)
+
+    if(lcount %% each == 0 | lcount == nrow(indexes)){
+      dissTOM = 1 - TOM/lcount
+      geneTree = flashClust::flashClust(as.dist(dissTOM), method = "average")
+      print("Now the genetree")
+      n.mods = 0
+      deep.split = 2
+      while(n.mods < 10 & deep.split < 5){
+        dynamicMods = dynamicTreeCut::cutreeDynamic(dendro = geneTree,
+                                                    distM = dissTOM,
+                                                    deepSplit = deep.split,
+                                                    pamRespectsDendro = FALSE,
+                                                    minClusterSize = 100)
+        n.mods = length(table(dynamicMods))
+        deep.split = deep.split + 1
+      }
+      rm(dissTOM)
+      # Convert numeric lables into colors
+      #This will print the same, but using as label for modules the corresponding colors
+      dynamicColors = WGCNA::labels2colors(dynamicMods)
+      net$subcluster = dynamicColors
+
+    }
+    net$indexes = indexes[lcount,]
+    allsubnets[[lcount]] = net
+    lcount = lcount + 1
+  }
+
+  finalnet = NULL
+  finalnet$beta = as.integer(mean(unlist(lapply(allsubnets,function(x){return(x$beta)}))))
+  finalnet$file = paste0(job.path,"/netBoot",tissue,".",finalnet$beta,".it.",n.iterations,".b.",nrow(indexes),".rds")
+  finalnet$tom = paste0(finalnet$file,".tom.rds")
+  TOM = TOM/lcount
+  adjacency = apply(TOM,2,sum)
+  adjacency = adjacency/length(adjacency)
+  names(adjacency) = colnames(expr.data)
+  saveRDS(TOM,finalnet$tom)
+  finalnet$adjacency = adjacency
+  finalnet$moduleColors = dynamicColors
+  finalnet$moduleLabels = dynamicMods
+  finalnet$subnets = allsubnets
+  rm(TOM)
+  outnet = CoExpNets::applyKMeans(tissue=tissue,
+                                  n.iterations=n.iterations,
+                                  net.file=finalnet,
+                                  tom=finalnet$tom,
+                                  expr.data=expr.data,
+                                  plot.evolution=F,
+                                  beta=finalnet$beta,
+                                  job.path=job.path,
+                                  final.net=finalnet$file)
+  kmnet = readRDS(finalnet$file)
+  finalnet$moduleColors = kmnet$moduleColors
+  finalnet$MEs = kmnet$MEs
+  finalnet$mode = mode
+
+  saveRDS(finalnet,finalnet$file)
+  return(finalnet$file)
+
+}
+
+
+
+#' Title
+#'
+#' @param mode
+#' @param expr.data
+#' @param n.iterations
+#' @param job.path
+#' @param allsampsnet
+#' @param each
+#' @param tissue
+#' @param b
+#' @param ...
+#'
+#' @return
+#' @export
+#'
+#' @examples
+getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
+                               expr.data,
+                               n.iterations=50,
+                               job.path,
+                               allsampsnet=F,
+                               each=1,
+                               tissue="Bootstrap",
+                               b=10,...){
+  print(expr.data[1:5,1:5])
+  if(typeof(expr.data) == "character")
+    expr.data = readRDS(expr.data)
+
+  #Lets create indexes
+  indexes = NULL
+  if(mode == "leaveoneout"){
+    lapply(1:nrow(expr.data),function(x){
+      indexes <<- rbind(indexes,(1:nrow(expr.data))[-x])
+    })
+  }else if(mode == "bootstrap"){
+    lapply(1:b,function(x){
+      indexes <<- rbind(indexes,sample(1:nrow(expr.data),nrow(expr.data),replace=T))
+    })
+  }else stop(paste0("Mode",mode,"unknown\n"))
 
   ngenes = ncol(expr.data)
   TOM = matrix(nrow = ngenes,ncol=ngenes)
@@ -95,8 +299,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
   count = 0
   allclusters = NULL
   allsubnets = NULL
-  if(clusterize)
-    handlers = NULL
+
   for(i in 1:nrow(indexes)){
     count = count + 1
     lexpr.data = expr.data[indexes[i,],]
@@ -105,119 +308,50 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
       while(sum(maskd)){
         rownames(lexpr.data)[maskd] = paste0(rownames(lexpr.data)[maskd],"_d")
         maskd = duplicated(rownames(lexpr.data))
-        print(maskd)
+        #print(maskd)
       }
 
     }
     ltissue = paste0(tissue,"_b_",i)
-    if(!clusterize){
-      net = getDownstreamNetwork(expr.data=lexpr.data,
-                                 tissue=ltissue,
-                                 job.path=job.path,
-                                 save.plots=F,
-                                 n.iterations=0,
-                                 save.tom=T,...)
+    net = getDownstreamNetwork(expr.data=lexpr.data,
+                               tissue=ltissue,
+                               job.path=job.path,
+                               save.plots=F,
+                               n.iterations=0,
+                               save.tom=T,...)
 
-      cat("Accumulating TOM",count,"\n")
-      TOM = TOM + readRDS(net$tom)
-      file.remove(net$tom)
-      file.remove(net$net)
+    cat("Accumulating TOM",count,"\n")
+    TOM = TOM + readRDS(net$tom)
+    file.remove(net$tom)
+    file.remove(net$net)
 
-      if(count %% each == 0 | count == nrow(indexes)){
-        dissTOM = 1 - TOM/count
-        geneTree = flashClust(as.dist(dissTOM), method = "average")
-        print("Now the genetree")
-        n.mods = 0
-        deep.split = 2
-        while(n.mods < 10 & deep.split < 5){
-          dynamicMods = cutreeDynamic(dendro = geneTree,
-                                      distM = dissTOM,
-                                      deepSplit = deep.split,
-                                      pamRespectsDendro = FALSE,
-                                      minClusterSize = 100)
-          n.mods = length(table(dynamicMods))
-          deep.split = deep.split + 1
-        }
-        rm(dissTOM)
-        print(table(dynamicMods))
-
-        # Convert numeric lables into colors
-        #This will print the same, but using as label for modules the corresponding colors
-        dynamicColors = labels2colors(dynamicMods)
-        net$subcluster = dynamicColors
-
+    if(count %% each == 0 | count == nrow(indexes)){
+      dissTOM = 1 - TOM/count
+      geneTree = flashClust::flashClust(as.dist(dissTOM), method = "average")
+      print("Now the genetree")
+      n.mods = 0
+      deep.split = 2
+      while(n.mods < 10 & deep.split < 5){
+        dynamicMods = dynamicTreeCut::cutreeDynamic(dendro = geneTree,
+                                                    distM = dissTOM,
+                                                    deepSplit = deep.split,
+                                                    pamRespectsDendro = FALSE,
+                                                    minClusterSize = 100)
+        n.mods = length(table(dynamicMods))
+        deep.split = deep.split + 1
       }
-      net$indexes = indexes[i,]
-      allsubnets[[i]] = net
-    }else{
-      params = NULL
-      params$its = n.iterations
-      params$outfolder = job.path
-      params$datain = lexpr.data
-      params$save.tom =T
-      params$tissue = ltissue
-      params$fun = function(tissue,datain,its,outfolder,save.tom){
-        library(CoExpNets)
-        genes = colnames(datain)
-        sampids = rownames(datain)
-        datain = log2(1 + as.matrix(datain))
-        colnames(datain) = genes
-        rownames(datain) = sampids
+      rm(dissTOM)
+      print(table(dynamicMods))
 
-        net = getDownstreamNetwork(tissue=tissue,
-                                   n.iterations=its,
-                                   save.tom = save.tom,
-                                   save.plots = F,
-                                   exCludeGrey = F,
-                                   beta=-1,
-                                   net.type = "signed",
-                                   debug=F,
-                                   expr.data=datain,
-                                   job.path=outfolder)
-        return(net)
+      # Convert numeric lables into colors
+      #This will print the same, but using as label for modules the corresponding colors
+      dynamicColors = WGCNA::labels2colors(dynamicMods)
+      net$subcluster = dynamicColors
 
-      }
-      handlers[[i]] = launchJob(parameters = params,clParams = clparams,prefix=paste0("Dervis",tissue))
     }
+    net$indexes = indexes[i,]
+    allsubnets[[i]] = net
 
-
-  }
-
-  if(clusterize){
-    nets = waitForJobs(handlers=handlers,removeData=F,removeLogs=F)
-    lapply(nets,function(net){
-      lcount = which(nets == net)
-      cat("Reading TOM",net$tom,"\n")
-      tom = readRDS(net$tom)
-      TOM <<- TOM + tom
-      file.remove(net$tom)
-      #file.remove(net$net)
-
-      if(lcount %% each == 0 | count == nrow(indexes)){
-        dissTOM = 1 - TOM/count
-        geneTree = flashClust(as.dist(dissTOM), method = "average")
-        print("Now the genetree")
-        n.mods = 0
-        deep.split = 2
-        while(n.mods < 10 & deep.split < 5){
-          dynamicMods = cutreeDynamic(dendro = geneTree,
-                                      distM = dissTOM,
-                                      deepSplit = deep.split,
-                                      pamRespectsDendro = FALSE,
-                                      minClusterSize = 100)
-          n.mods = length(table(dynamicMods))
-          deep.split = deep.split + 1
-        }
-        rm(dissTOM)
-        # Convert numeric lables into colors
-        #This will print the same, but using as label for modules the corresponding colors
-        dynamicColors = labels2colors(dynamicMods)
-        net$subcluster = dynamicColors
-
-      }
-      net$indexes = indexes[lcount,]
-      allsubnets[[lcount]] <<- net
-    })
   }
 
   finalnet = NULL
@@ -286,7 +420,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
 #' @param net.type Whether a signed ("signed") or unsigned ("unsigned") network type will be created
 #' @param debug Set this to true if you want a quick run of the method to test how it works with
 #' a small amount of your genes
-#' @param exCludeGrey If WGCNA detects grey genes, set it to TRUE if you want them removed
+#' @param excludeGrey If WGCNA detects grey genes, set it to TRUE if you want them removed
 #' from the network before applying k-means
 #'
 #' @return A file name that can be used to access your network
@@ -306,7 +440,7 @@ getDownstreamNetwork = function(tissue="mytissue",
                                 debug=F,
                                 save.tom=F,
                                 save.plots=F,
-                                exCludeGrey=FALSE){
+                                excludeGrey=FALSE){
 
   final.net=NULL
   distance.type="cor"
@@ -325,6 +459,7 @@ getDownstreamNetwork = function(tissue="mytissue",
                                       tissue.name=tissue,
                                       min.cluster.size=min.cluster.size,
                                       save.plots=save.plots,
+                                      excludeGrey=excludeGrey,
                                       additional.prefix=job.path,
                                       return.tom=T,
                                       cor.type=cor.type)
@@ -345,6 +480,7 @@ getDownstreamNetwork = function(tissue="mytissue",
                        expr.data=expr.data,
                        plot.evolution=plot.evolution,
                        beta=net.and.tom$net$beta,
+                       excludeGrey=exludeGrey,
                        min.exchanged.genes = min.exchanged.genes,
                        job.path=job.path,
                        final.net=final.net,
@@ -433,40 +569,40 @@ generateBetaStudy <- function(expr.data,powers=c(1:30),title=NULL,plot.file=NULL
 
   if(cor.type == "pearson")
     sft = WGCNA::pickSoftThreshold(expr.data,powerVector=powers,verbose=5,moreNetworkConcepts=TRUE,
-                            networkType=net.type,corOptions=list(use='p'))
+                                   networkType=net.type,corOptions=list(use='p'))
   else
     sft = WGCNA::pickSoftThreshold(expr.data,powerVector=powers,verbose=5,moreNetworkConcepts=TRUE,
-                            networkType=net.type,corFn=stats::cor,corOptions=list(method = "spearman"))
+                                   networkType=net.type,corFn=stats::cor,corOptions=list(method = "spearman"))
 
   if(!is.null(plot.file)){
 
 
     pdf(plot.file,width=18,height=8)
 
-  old.par <- par()
-  par(mfrow=c(1,2))
-  cex1=0.9
-  #Plotting the adjustment level
+    old.par <- par()
+    par(mfrow=c(1,2))
+    cex1=0.9
+    #Plotting the adjustment level
 
-  plot(sft$fitIndices[,1],-sign(sft$fitIndices[,3])*sft$fitIndices[,2],
-       xlab=paste0("Soft threshold, cor type ",cor.type," net type ",net.type),
-       ylab="Scale Free Topology Model Fit.R^2",type="n",
-       main=paste0("Scale independence ",title))
+    plot(sft$fitIndices[,1],-sign(sft$fitIndices[,3])*sft$fitIndices[,2],
+         xlab=paste0("Soft threshold, cor type ",cor.type," net type ",net.type),
+         ylab="Scale Free Topology Model Fit.R^2",type="n",
+         main=paste0("Scale independence ",title))
 
-  text(sft$fitIndices[,1],-sign(sft$fitIndices[,3])*sft$fitIndices[,2],
-       labels=powers,col="red",cex=cex1)
+    text(sft$fitIndices[,1],-sign(sft$fitIndices[,3])*sft$fitIndices[,2],
+         labels=powers,col="red",cex=cex1)
 
-  abline(h=0.80,col="red",lwd=2)
+    abline(h=0.80,col="red",lwd=2)
 
 
-  #Plotting mean network connectivity
-  plot(sft$fitIndices[,1],sft$fitIndices[,5],xlab="Soft Threshold",
-       ylab="Mean Connectivity", type="n", main=paste0("Mean connectivity (cor type ",cor.type,"net type  ",
-                                                       net.type,") ",title))
-  text(sft$fitIndices[,1],sft$fitIndices[,5],labels=powers,col="red",
-       cex=cex1)
+    #Plotting mean network connectivity
+    plot(sft$fitIndices[,1],sft$fitIndices[,5],xlab="Soft Threshold",
+         ylab="Mean Connectivity", type="n", main=paste0("Mean connectivity (cor type ",cor.type,"net type  ",
+                                                         net.type,") ",title))
+    text(sft$fitIndices[,1],sft$fitIndices[,5],labels=powers,col="red",
+         cex=cex1)
 
-  par(old.par)
+    par(old.par)
     dev.off()
     write.csv(sft$fitIndices,paste0(plot.file,".csv"))
 
@@ -476,6 +612,33 @@ generateBetaStudy <- function(expr.data,powers=c(1:30),title=NULL,plot.file=NULL
   sft
 }
 
+#' Title
+#'
+#' @param tissue
+#' @param create.tom
+#' @param distance.type
+#' @param centroid.type
+#' @param n.iterations
+#' @param net.file
+#' @param expr.data
+#' @param beta
+#' @param tom
+#' @param job.path
+#' @param plot.evolution
+#' @param plot.go
+#' @param debug
+#' @param n.debug
+#' @param norm.when.euc.mean
+#' @param net.type
+#' @param min.exchanged.genes
+#' @param excludeGrey
+#' @param final.net
+#' @param cor.type
+#'
+#' @return
+#' @export
+#'
+#' @examples
 applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
                         create.tom=TRUE,
                         distance.type=COR_DISTANCE,
@@ -493,7 +656,8 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
                         norm.when.euc.mean=TRUE,
                         net.type="signed",
                         min.exchanged.genes=20,
-                        k.means.min.genes.to.consider.grey=300,
+                        #k.means.min.genes.to.consider.grey=300,
+                        excludeGrey=F,
                         final.net=paste0(job.path,"/","net",tissue,".",beta,".",net.type,".it.",n.iterations,".rds"),
                         cor.type="pearson"){
 
@@ -569,10 +733,10 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
   #Step 3
 
   #print("Getting initial eigengenes")
-  if(sum(partition.in.colors == "grey") < k.means.min.genes.to.consider.grey)
-    eigengenes = WGCNA::moduleEigengenes(expr.data,partition.in.colors, excludeGrey=TRUE)
-  else
-    eigengenes = WGCNA::moduleEigengenes(expr.data,partition.in.colors, excludeGrey=F)
+  #if(sum(partition.in.colors == "grey") < k.means.min.genes.to.consider.grey)
+  #  eigengenes = WGCNA::moduleEigengenes(expr.data,partition.in.colors, excludeGrey=TRUE)
+  #else
+  eigengenes = WGCNA::moduleEigengenes(expr.data,partition.in.colors, excludeGrey=excludeGrey)
 
   #print(paste0("We got ",length(eigengenes$eigengenes), " eigengene vectors"))
   #print(head(eigengenes$eigengenes))
@@ -649,7 +813,7 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
 
   print("The algorithm finished correctly")
   result.net = genNetFromPartition(expr.data.file=expr.data,
-                                   k.means.min.genes.to.consider.grey=k.means.min.genes.to.consider.grey,
+                                   excludeGrey=excludeGrey,
                                    beta=beta,
                                    partitions.file=partitions,
                                    index=-1)
@@ -682,7 +846,7 @@ getNewCentroidsEG = function(expr.data,partition.in.colors,centroid.labels){
 genNetFromPartition = function(expr.data.file,
                                beta,
                                partitions.file,
-                               k.means.min.genes.to.consider.grey=300,
+                               excludeGrey=F,
                                index=-1){
 
   if(typeof(partitions.file) == "character")
@@ -723,10 +887,10 @@ genNetFromPartition = function(expr.data.file,
   #If there are some grey genes as NA, add them again
   new.net$moduleColors[is.na(new.net$moduleColors)] = "grey"
 
-  if(sum(new.net$moduleColors == "grey") >= k.means.min.genes.to.consider.grey)
-    new.net$MEs  = WGCNA::moduleEigengenes(expr.data,new.net$moduleColors,softPower=beta, excludeGrey=F)$eigengenes
-  else
-    new.net$MEs  = WGCNA::moduleEigengenes(expr.data,new.net$moduleColors,softPower=beta, excludeGrey=T)$eigengenes
+  #¢if(sum(new.net$moduleColors == "grey") >= k.means.min.genes.to.consider.grey)
+  #  new.net$MEs  = WGCNA::moduleEigengenes(expr.data,new.net$moduleColors,softPower=beta, excludeGrey=F)$eigengenes
+  #else
+  new.net$MEs  = WGCNA::moduleEigengenes(expr.data,new.net$moduleColors,softPower=beta, excludeGrey=exludeGrey)$eigengenes
   return(new.net)
 }
 
@@ -880,7 +1044,7 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
   deep.split = 2
   while(n.mods < 10 & deep.split < 5){
     dynamicMods = dynamicTreeCut::cutreeDynamic(dendro = geneTree, distM = dissTOM, deepSplit = deep.split,
-                                pamRespectsDendro = FALSE, minClusterSize = min.cluster.size)
+                                                pamRespectsDendro = FALSE, minClusterSize = min.cluster.size)
     n.mods = length(table(dynamicMods))
     deep.split = deep.split + 1
   }
@@ -906,7 +1070,7 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
   MEDissThres = 0.1 #### MERGING THRESHOLD
   # Call an automatic merging function
   merge = WGCNA::mergeCloseModules(expr.data, dynamicColors, cutHeight = MEDissThres,
-                            verbose = 3, unassdColor="grey",getNewUnassdME = FALSE)
+                                   verbose = 3, unassdColor="grey",getNewUnassdME = FALSE)
   # The merged module colors
   mergedColors = merge$colors
   # Eigengenes of the new merged modules
@@ -918,9 +1082,9 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
 
     pdf(file=dendro.name)
     WGCNA::plotDendroAndColors(geneTree, cbind(dynamicColors, mergedColors),
-                        c("Dynamic Tree Cut", "Merged dynamic"),dendroLabels = FALSE,
-                        hang = 0.03, addGuide = TRUE,
-                        guideHang = 0.05,main=title)
+                               c("Dynamic Tree Cut", "Merged dynamic"),dendroLabels = FALSE,
+                               hang = 0.03, addGuide = TRUE,
+                               guideHang = 0.05,main=title)
     dev.off()
 
     pdf(file=eigengenes.name)
@@ -1150,14 +1314,14 @@ corWithCatTraits = function(tissue,which.one,covlist,covs=NULL){
   moduleTraitPvalue = -log10(moduleTraitPvalue)
   moduleTraitPvalue[moduleTraitPvalue > 10] = 10
   WGCNA::labeledHeatmap(Matrix=moduleTraitPvalue,
-                 xLabels=colnames(moduleTraitPvalue),
-                 yLabels=gsub("ME","",names(MEs)),
-                 ySymbols=names(MEs),
-                 colorLabels=FALSE,
-                 colors=rev(heat.colors(50)),
-                 cex.text=0.5,
-                 zlim = c(0,10),
-                 main="Module-trait relationships")
+                        xLabels=colnames(moduleTraitPvalue),
+                        yLabels=gsub("ME","",names(MEs)),
+                        ySymbols=names(MEs),
+                        colorLabels=FALSE,
+                        colors=rev(heat.colors(50)),
+                        cex.text=0.5,
+                        zlim = c(0,10),
+                        main="Module-trait relationships")
 }
 
 
@@ -1174,16 +1338,16 @@ corWithNumTraits = function(tissue,which.one,covlist,covs=NULL){
   par(mar = c(6, 8.5, 3, 3));
   # Display the correlation values within a heatmap plot
   WGCNA::labeledHeatmap(Matrix = moduleTraitCor,
-                 xLabels = covlist,
-                 yLabels = names(MEs),
-                 ySymbols = names(MEs),
-                 colorLabels = FALSE,
-                 colors = blueWhiteRed(50),
-                 textMatrix = textMatrix,
-                 setStdMargins = FALSE,
-                 cex.text = 0.5,
-                 zlim = c(-1,1),
-                 main = paste0("Module-trait relationships"))
+                        xLabels = covlist,
+                        yLabels = names(MEs),
+                        ySymbols = names(MEs),
+                        colorLabels = FALSE,
+                        colors = blueWhiteRed(50),
+                        textMatrix = textMatrix,
+                        setStdMargins = FALSE,
+                        cex.text = 0.5,
+                        zlim = c(-1,1),
+                        main = paste0("Module-trait relationships"))
 }
 
 
