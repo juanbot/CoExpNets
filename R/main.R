@@ -275,6 +275,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
                                job.path,
                                allsampsnet=F,
                                each=1,
+                               min.cluster.size=100,
                                tissue="Bootstrap",
                                b=10,...){
   print(expr.data[1:5,1:5])
@@ -314,6 +315,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
     }
     ltissue = paste0(tissue,"_b_",i)
     net = getDownstreamNetwork(expr.data=lexpr.data,
+                               min.cluster.size=min.cluster.size,
                                tissue=ltissue,
                                job.path=job.path,
                                save.plots=F,
@@ -480,7 +482,7 @@ getDownstreamNetwork = function(tissue="mytissue",
                        expr.data=expr.data,
                        plot.evolution=plot.evolution,
                        beta=net.and.tom$net$beta,
-                       excludeGrey=exludeGrey,
+                       excludeGrey=excludeGrey,
                        min.exchanged.genes = min.exchanged.genes,
                        job.path=job.path,
                        final.net=final.net,
@@ -890,7 +892,7 @@ genNetFromPartition = function(expr.data.file,
   #¢if(sum(new.net$moduleColors == "grey") >= k.means.min.genes.to.consider.grey)
   #  new.net$MEs  = WGCNA::moduleEigengenes(expr.data,new.net$moduleColors,softPower=beta, excludeGrey=F)$eigengenes
   #else
-  new.net$MEs  = WGCNA::moduleEigengenes(expr.data,new.net$moduleColors,softPower=beta, excludeGrey=exludeGrey)$eigengenes
+  new.net$MEs  = WGCNA::moduleEigengenes(expr.data,new.net$moduleColors,softPower=beta, excludeGrey=excludeGrey)$eigengenes
   return(new.net)
 }
 
