@@ -115,7 +115,7 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
     params$save.tom =T
     params$tissue = ltissue
     params$maskd = maskd
-    params$fun = function(tissue,datain,mode,min,cluster,size,its,outfolder,save.tom,maskd){
+    params$fun = function(tissue,datain,mode,min.cluster.size,its,outfolder,save.tom,maskd){
       library(CoExpNets)
       genes = colnames(datain)
       sampids = rownames(datain)
