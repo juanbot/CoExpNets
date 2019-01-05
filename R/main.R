@@ -88,6 +88,9 @@ plotMDS = function(rpkms.net,path,covs,covvars,label,n.mds=-1){
 #' @param tissue
 #' @param b
 #' @param ...
+#' @param removeTOM
+#' @param min.cluster.size
+#' @param waitFor
 #'
 #' @return
 #' @export
@@ -102,6 +105,8 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
                                  allsampsnet=F,
                                  each=1,
                                  tissue="Bootstrap",
+                                 clParams=" -l nodes=1:nv ",
+                                 waitFor=24*3600,
                                  b=10,...){
   print(expr.data[1:5,1:5])
   if(typeof(expr.data) == "character")
@@ -176,7 +181,8 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
       return(net)
 
     }
-    handlers[[i]] = launchJob(parameters = params,clParams = " -l nodes=1:nv ",prefix=ltissue,
+    handlers[[i]] = launchJob(parameters = params,clParams = clParams,
+                              prefix=ltissue,
                               wd=job.path)
   }
   #Now we send the post job
@@ -193,8 +199,11 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
   params$indexes = indexes
   params$job.path = job.path
   params$mode = mode
+  params$waitFor = waitFor
   params$fun = postCluster
-  singlehandler = launchJob(parameters = params,clParams = " -l nodes=1:nv ",prefix=ltissue,
+  singlehandler = launchJob(parameters = params,
+                            clParams = clParams,
+                            prefix=ltissue,
                             wd=job.path)
   handf = paste0(job.path,"/",tissue,"_handlers.rds")
   handlers[[i+1]] = singlehandler
@@ -211,77 +220,100 @@ postCluster = function(handlers,
                        removeTOM=F,
                        each=1,
                        mode,
+                       waitFor=24*3600,
                        indexes,
                        job.path){
   ngenes = ncol(expr.data)
   TOM = matrix(nrow = ngenes,ncol=ngenes)
   TOM[] = 0
   allsubnets = NULL
-  nets = waitForJobs(handlers=handlers,removeData=T,removeLogs=F,qstatworks=F,wd=job.path)
+
+  nets = waitForJobs(handlers=handlers,
+                     timeLimit=waitFor,
+                     increment=5,
+                     removeData=T,
+                     removeLogs=F,
+                     qstatworks=F,
+                     wd=job.path)
+
+  cat("Just came back from waitForJobs with",length(nets),"handlers\n")
   lcount = 1
   for(net in nets){
-    print(net)
-    net = net$result
-    print(net)
-    cat("Reading TOM",net$tom,"\n")
-    tom = readRDS(net$tom)
-    TOM = TOM + tom
-    if(removeTOM)
-      file.remove(net$tom)
-    #file.remove(net$net)
+    if(is.null(net)){
+      cat("This work have not properly finished\n")
+    }else{
+      #print(net)
+      net = net$result
+      #print(net)
+      cat("Reading TOM",net$tom,"\n")
+      tom = readRDS(net$tom)
+      TOM = TOM + tom
+      if(removeTOM)
+        file.remove(net$tom)
+      #file.remove(net$net)
 
-    if(lcount %% each == 0 | lcount == nrow(indexes)){
-      dissTOM = 1 - TOM/lcount
-      geneTree = flashClust::flashClust(as.dist(dissTOM), method = "average")
-      print("Now the genetree")
-      n.mods = 0
-      deep.split = 2
-      while(n.mods < 10 & deep.split < 5){
-        dynamicMods = dynamicTreeCut::cutreeDynamic(dendro = geneTree,
-                                                    distM = dissTOM,
-                                                    deepSplit = deep.split,
-                                                    pamRespectsDendro = FALSE,
-                                                    minClusterSize = 100)
-        n.mods = length(table(dynamicMods))
-        deep.split = deep.split + 1
+      if(lcount %% each == 0 | lcount == length(nets)){
+        dissTOM = 1 - TOM/lcount
+        geneTree = flashClust::flashClust(as.dist(dissTOM), method = "average")
+        print("Now the genetree")
+        n.mods = 0
+        deep.split = 2
+        while(n.mods < 10 & deep.split < 5){
+          dynamicMods = dynamicTreeCut::cutreeDynamic(dendro = geneTree,
+                                                      distM = dissTOM,
+                                                      deepSplit = deep.split,
+                                                      pamRespectsDendro = FALSE,
+                                                      minClusterSize = 100)
+          n.mods = length(table(dynamicMods))
+          deep.split = deep.split + 1
+        }
+        rm(dissTOM)
+        # Convert numeric lables into colors
+        #This will print the same, but using as label for modules the corresponding colors
+        dynamicColors = WGCNA::labels2colors(dynamicMods)
+        net$subcluster = dynamicColors
+
       }
-      rm(dissTOM)
-      # Convert numeric lables into colors
-      #This will print the same, but using as label for modules the corresponding colors
-      dynamicColors = WGCNA::labels2colors(dynamicMods)
-      net$subcluster = dynamicColors
-
+      net$indexes = indexes[lcount,]
+      allsubnets[[lcount]] = net
     }
-    net$indexes = indexes[lcount,]
-    allsubnets[[lcount]] = net
+
     lcount = lcount + 1
+    flush.console()
   }
-
+  lcount = lcount - 1
   finalnet = NULL
-  finalnet$beta = as.integer(mean(unlist(lapply(allsubnets,function(x){return(x$beta)}))))
-  finalnet$file = paste0(job.path,"/netBoot",tissue,".",finalnet$beta,".it.",n.iterations,".b.",nrow(indexes),".rds")
-  finalnet$tom = paste0(finalnet$file,".tom.rds")
-  TOM = TOM/lcount
-  adjacency = apply(TOM,2,sum)
-  adjacency = adjacency/length(adjacency)
-  names(adjacency) = colnames(expr.data)
-  saveRDS(TOM,finalnet$tom)
-  finalnet$adjacency = adjacency
-  finalnet$moduleColors = dynamicColors
-  finalnet$moduleLabels = dynamicMods
-  finalnet$subnets = allsubnets
-  rm(TOM)
-  outnet = CoExpNets::applyKMeans(tissue=tissue,
-                                  n.iterations=n.iterations,
-                                  net.file=finalnet,
-                                  tom=finalnet$tom,
-                                  expr.data=expr.data,
-                                  plot.evolution=F,
-                                  beta=finalnet$beta,
-                                  job.path=job.path,
-                                  final.net=finalnet$file)
+  finalnet$file = paste0(job.path,"/netBoot",tissue,".default.it.",n.iterations,".b.",nrow(indexes),".rds")
 
-
+  if(length(allsubnets) > 0){
+    finalnet$beta = as.integer(mean(unlist(lapply(allsubnets,function(x){return(x$beta)}))))
+    finalnet$file = paste0(job.path,"/netBoot",tissue,".",finalnet$beta,".it.",n.iterations,".b.",nrow(indexes),".rds")
+    finalnet$tom = paste0(finalnet$file,".tom.rds")
+    TOM = TOM/lcount
+    adjacency = apply(TOM,2,sum)
+    adjacency = adjacency/length(adjacency)
+    names(adjacency) = colnames(expr.data)
+    saveRDS(TOM,finalnet$tom)
+    finalnet$adjacency = adjacency
+    finalnet$moduleColors = dynamicColors
+    finalnet$moduleLabels = dynamicMods
+    finalnet$moduleColorsPreKmeans = dynamicColors
+    finalnet$subnets = allsubnets
+    rm(TOM)
+    outnet = CoExpNets::applyKMeans(tissue=tissue,
+                                    n.iterations=n.iterations,
+                                    net.file=finalnet,
+                                    tom=finalnet$tom,
+                                    expr.data=expr.data,
+                                    plot.evolution=F,
+                                    beta=finalnet$beta,
+                                    job.path=job.path,
+                                    final.net=finalnet$file)
+    kmnet = readRDS(finalnet$file)
+    finalnet$moduleColors = kmnet$moduleColors
+    finalnet$MEs = kmnet$MEs
+    finalnet$mode = mode
+  }
 
   if(allsampsnet){
     fallsamplesnet = CoExpNets::getDownstreamNetwork(expr.data=expr.data,
@@ -298,14 +330,13 @@ postCluster = function(handlers,
     file.remove(fallsamplesnet)
   }
 
-  kmnet = readRDS(finalnet$file)
-  finalnet$moduleColors = kmnet$moduleColors
-  finalnet$MEs = kmnet$MEs
-  finalnet$mode = mode
+  if(!is.null(finalnet)){
+    attr(finalnet,"class") <- "bootnet"
+    saveRDS(finalnet,finalnet$file)
+    return(finalnet$file)
+  }
 
-  saveRDS(finalnet,finalnet$file)
-  return(finalnet$file)
-
+  return(NULL)
 }
 
 
@@ -456,7 +487,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
     file.remove(fallsamplesnet)
   }
 
-
+  attr(finalnet,"class") <- "bootnet"
   saveRDS(finalnet,finalnet$file)
   return(finalnet$file)
 
