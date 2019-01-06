@@ -51,6 +51,7 @@ print.bootnet = function(net){
 #'
 #' @examples
 plotMDS = function(rpkms.net,path,covs,covvars,label,n.mds=-1){
+
   intersect.s = intersect(rownames(covs),colnames(rpkms.net))
   covs = covs[intersect.s,]
   rpkms.net = rpkms.net[,intersect.s]
@@ -106,6 +107,7 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
                                  each=1,
                                  tissue="Bootstrap",
                                  clParams=" -l nodes=1:nv ",
+                                 clParamsPost=clParams,
                                  waitFor=24*3600,
                                  b=10,...){
   print(expr.data[1:5,1:5])
@@ -202,7 +204,7 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
   params$waitFor = waitFor
   params$fun = postCluster
   singlehandler = launchJob(parameters = params,
-                            clParams = clParams,
+                            clParams = clParamsPost,
                             prefix=ltissue,
                             wd=job.path)
   handf = paste0(job.path,"/",tissue,"_handlers.rds")
@@ -246,7 +248,7 @@ postCluster = function(handlers,
       net = net$result
       #print(net)
       cat("Reading TOM",net$tom,"\n")
-      tom = readRDS(net$tom)
+      tom = scale(readRDS(net$tom))
       TOM = TOM + tom
       if(removeTOM)
         file.remove(net$tom)
@@ -413,7 +415,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
                                save.tom=T,...)
 
     cat("Accumulating TOM",count,"\n")
-    TOM = TOM + readRDS(net$tom)
+    TOM = TOM + scale(readRDS(net$tom))
     file.remove(net$tom)
     file.remove(net$net)
 
