@@ -1,4 +1,7 @@
 
+#Note: possible error in 'plotMDS(rpkms.net[, mask], ': unused arguments (col = colors[as.numeric(covs[, covvar])], main = paste0("MDS using ", covvar, " ", label))
+#Note: possible error in 'getFriendlyNameForColumnCategories(names(cell.type.row), ': unused argument (F)
+#Note: possible error in 'getFriendlyNameForColumnCategories(names(cell.type.row), ': unused argument (F)
 
 print.bootnet = function(net){
   cat("A bootstrapped network created with mode",net$mode,"\n",
@@ -253,6 +256,8 @@ postCluster = function(handlers,
       if(removeTOM)
         file.remove(net$tom)
       #file.remove(net$net)
+      cat("TOM updated\n")
+
 
       if(lcount %% each == 0 | lcount == length(nets)){
         dissTOM = 1 - TOM/lcount
@@ -265,6 +270,7 @@ postCluster = function(handlers,
                                                       distM = dissTOM,
                                                       deepSplit = deep.split,
                                                       pamRespectsDendro = FALSE,
+                                                      respectSmallClusters = F,
                                                       minClusterSize = 100)
           n.mods = length(table(dynamicMods))
           deep.split = deep.split + 1
@@ -272,8 +278,14 @@ postCluster = function(handlers,
         rm(dissTOM)
         # Convert numeric lables into colors
         #This will print the same, but using as label for modules the corresponding colors
-        dynamicColors = WGCNA::labels2colors(dynamicMods)
-        net$subcluster = dynamicColors
+        localnet = NULL
+        localnet$moduleColors = WGCNA::labels2colors(dynamicMods)
+        outnet = CoExpNets::applyKMeans(tissue=tissue,
+                                        n.iterations=n.iterations,
+                                        net.file=localnet,
+                                        expr.data=expr.data)
+
+        net$subcluster = outnet$net$moduleColors
 
       }
       net$indexes = indexes[lcount,]
@@ -297,24 +309,18 @@ postCluster = function(handlers,
     names(adjacency) = colnames(expr.data)
     saveRDS(TOM,finalnet$tom)
     finalnet$adjacency = adjacency
-    finalnet$moduleColors = dynamicColors
-    finalnet$moduleLabels = dynamicMods
-    finalnet$moduleColorsPreKmeans = dynamicColors
+    finalnet$moduleColors = outnet$net$moduleColors
     finalnet$subnets = allsubnets
+    finalnet$mode = mode
     rm(TOM)
     outnet = CoExpNets::applyKMeans(tissue=tissue,
                                     n.iterations=n.iterations,
                                     net.file=finalnet,
-                                    tom=finalnet$tom,
-                                    expr.data=expr.data,
-                                    plot.evolution=F,
-                                    beta=finalnet$beta,
-                                    job.path=job.path,
-                                    final.net=finalnet$file)
-    kmnet = readRDS(finalnet$file)
-    finalnet$moduleColors = kmnet$moduleColors
-    finalnet$MEs = kmnet$MEs
-    finalnet$mode = mode
+                                    expr.data=expr.data)
+    finalnet$moduleColors = outnet$net$moduleColors
+    finalnet$MEs = outnet$net$MEs
+    finalnet$cgenes = outnet$cgenes
+    finalnet$partitions = outnet$partitions
   }
 
   if(allsampsnet){
@@ -417,7 +423,6 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
     cat("Accumulating TOM",count,"\n")
     TOM = TOM + scale(readRDS(net$tom))
     file.remove(net$tom)
-    file.remove(net$net)
 
     if(count %% each == 0 | count == nrow(indexes)){
       dissTOM = 1 - TOM/count
@@ -430,17 +435,23 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
                                                     distM = dissTOM,
                                                     deepSplit = deep.split,
                                                     pamRespectsDendro = FALSE,
+                                                    respectSmallClusters = F,
                                                     minClusterSize = 100)
         n.mods = length(table(dynamicMods))
         deep.split = deep.split + 1
       }
       rm(dissTOM)
-      print(table(dynamicMods))
 
       # Convert numeric lables into colors
       #This will print the same, but using as label for modules the corresponding colors
-      dynamicColors = WGCNA::labels2colors(dynamicMods)
-      net$subcluster = dynamicColors
+      localnet = NULL
+      localnet$moduleColors = WGCNA::labels2colors(dynamicMods)
+      outnet = CoExpNets::applyKMeans(tissue=tissue,
+                                      n.iterations=n.iterations,
+                                      net.file=localnet,
+                                      expr.data=expr.data)
+
+      net$subcluster = outnet$net$moduleColors
 
     }
     net$indexes = indexes[i,]
@@ -459,35 +470,28 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
   names(adjacency) = colnames(expr.data)
   saveRDS(TOM,finalnet$tom)
   finalnet$adjacency = adjacency
-  finalnet$moduleColors = dynamicColors
-  finalnet$moduleLabels = dynamicMods
+  finalnet$moduleColors = outnet$net$moduleColors
   finalnet$subnets = allsubnets
 
-  outnet = applyKMeans(tissue=tissue,
-                       n.iterations=n.iterations,
-                       net.file=finalnet,
-                       tom=finalnet$tom,
-                       expr.data=expr.data,
-                       plot.evolution=F,
-                       beta=finalnet$beta,
-                       job.path=job.path,
-                       final.net=finalnet$file)
-  kmnet = readRDS(finalnet$file)
-  finalnet$moduleColors = kmnet$moduleColors
-  finalnet$MEs = kmnet$MEs
+  outnet = CoExpNets::applyKMeans(tissue=tissue,
+                                  n.iterations=n.iterations,
+                                  net.file=finalnet,
+                                  expr.data=expr.data)
+  finalnet$moduleColors = outnet$net$moduleColors
+  finalnet$MEs = outnet$net$MEs
   finalnet$mode = mode
+  finalnet$cgenes = outnet$cgenes
+  finalnet$partitions = outnet$partitions
 
-  if(allsampsnet){
-    fallsamplesnet = getDownstreamNetwork(expr.data=expr.data,
-                                          tissue=paste0(tissue,"_allsamps_"),
-                                          job.path=job.path,
-                                          save.plots=F,
-                                          min.cluster.size = min.cluster.size,
-                                          n.iterations=n.iterations,
-                                          save.tom=F)$net
-    finalnet$allsamplesnet = readRDS(fallsamplesnet)
-    file.remove(fallsamplesnet)
-  }
+  if(allsampsnet)
+    finalnet$allsamplesnet = getDownstreamNetwork(expr.data=expr.data,
+                                                  tissue=paste0(tissue,"_allsamps_"),
+                                                  job.path=job.path,
+                                                  save.plots=F,
+                                                  min.cluster.size = min.cluster.size,
+                                                  n.iterations=n.iterations,
+                                                  save.tom=F)
+
 
   attr(finalnet,"class") <- "bootnet"
   saveRDS(finalnet,finalnet$file)
@@ -567,24 +571,20 @@ getDownstreamNetwork = function(tissue="mytissue",
   if(save.tom)
     saveRDS(net.and.tom$tom,paste0(final.net,".tom.rds"))
 
-  outnet = applyKMeans(tissue=tissue,
-                       n.iterations=n.iterations,
-                       net.file=net.and.tom$net,
-                       distance.type=distance.type,
-                       centroid.type=centroid.type,
-                       tom=net.and.tom$tom,
-                       expr.data=expr.data,
-                       plot.evolution=plot.evolution,
-                       beta=net.and.tom$net$beta,
-                       excludeGrey=excludeGrey,
-                       min.exchanged.genes = min.exchanged.genes,
-                       job.path=job.path,
-                       final.net=final.net,
-                       cor.type=cor.type)
+  outnet = CoExpNets::applyKMeans(tissue=tissue,
+                                  n.iterations=n.iterations,
+                                  net.file=net.and.tom$net,
+                                  expr.data=expr.data,
+                                  excludeGrey=excludeGrey,
+                                  min.exchanged.genes = min.exchanged.genes)
+
   foutnet = NULL
   foutnet$beta = net.and.tom$net$beta
   foutnet$type = net.and.tom$net$type
-  foutnet$net = outnet[[1]]
+  foutnet$net = outnet$net
+  foutnet$partitions = outnet$partitions
+  foutnet$cgenes = outnet$cgenes
+
   if(save.tom)
     foutnet$tom = paste0(final.net,".tom.rds")
 
@@ -735,27 +735,15 @@ generateBetaStudy <- function(expr.data,powers=c(1:30),title=NULL,plot.file=NULL
 #' @export
 #'
 #' @examples
-applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
-                        create.tom=TRUE,
-                        distance.type=COR_DISTANCE,
-                        centroid.type=EG_CENTROID,
+applyKMeans <- function(tissue,
+                        net.file,
+                        expr.data,
                         n.iterations=20,
-                        net.file=snig.net.file,
-                        expr.data=snig.expr.data.object,
-                        beta=6,
-                        tom=NULL,	#If TOM is NULL, it is created. If it is an object is used and if its a character is readed
-                        job.path="/tmp/kmeans/",
-                        plot.evolution=TRUE,
-                        plot.go=FALSE,
                         debug=F,
                         n.debug=500,
-                        norm.when.euc.mean=TRUE,
                         net.type="signed",
                         min.exchanged.genes=20,
-                        #k.means.min.genes.to.consider.grey=300,
-                        excludeGrey=F,
-                        final.net=paste0(job.path,"/","net",tissue,".",beta,".",net.type,".it.",n.iterations,".rds"),
-                        cor.type="pearson"){
+                        excludeGrey=F){
 
   if(typeof(expr.data) == "character")
     expr.data <- readRDS(expr.data)
@@ -773,22 +761,6 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
 
   if(debug){
     net$moduleColors = net$moduleColors[1:n.debug]
-  }
-
-  if(is.null(tom)){
-    #Now we create the TOM
-    if(cor.type == "spearman")
-      corOptions = "use = 'p', method = 'spearman'"
-    else
-      corOptions = "use = 'p'"
-    adjacency = WGCNA::adjacency(expr.data, power = beta, type = net.type, corOptions=corOptions)
-    tom.matrix = WGCNA::TOMsimilarity(adjacency)
-  }else if(typeof(tom) == "character"){
-    cat("TOM matrix loaded from file",tom,"\n")
-    tom.matrix = readRDS(tom)
-  }else{
-    cat("TOM matrix passed as argument\n")
-    tom.matrix = tom
   }
 
 
@@ -824,18 +796,10 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
 
   #Gather the current partition we start from
   partition.in.colors <- net$moduleColors
-  #print(head(partition.in.colors,5))
 
   #Step 3
-
-  #print("Getting initial eigengenes")
-  #if(sum(partition.in.colors == "grey") < k.means.min.genes.to.consider.grey)
-  #  eigengenes = WGCNA::moduleEigengenes(expr.data,partition.in.colors, excludeGrey=TRUE)
-  #else
-  eigengenes = WGCNA::moduleEigengenes(expr.data,partition.in.colors, excludeGrey=excludeGrey)
-
-  #print(paste0("We got ",length(eigengenes$eigengenes), " eigengene vectors"))
-  #print(head(eigengenes$eigengenes))
+  eigengenes = WGCNA::moduleEigengenes(expr.data,partition.in.colors,
+                                       excludeGrey=excludeGrey)
 
   #This variable is fixed and used as a reference to indicate the
   #modules used (they are colours but the position within the vector is
@@ -860,11 +824,7 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
   #A partition will be a list of as much elements as genes and for the
   #i-th position it stores the index of the module the ith gene belongs
   #to, and the color can be found in "centroid.labels"
-  #print("From partition ")
-  #print(head(partition.in.colors))
-  #print("We create ")
   new.partition <- match(partition.in.colors, centroid.labels)
-  #print(head(new.partition))
   names(new.partition) <- centroid.labels[new.partition]
   partitions[[1]] <- new.partition
 
@@ -876,62 +836,47 @@ applyKMeans <- function(tissue="SNIG.Peer4.Beta6",
 
   #Launch the iterations
   #min.exchanged.genes = 20
+  allgchanges = NULL
   exchanged.genes = min.exchanged.genes + 1
   iteration = 1
 
   while(exchanged.genes > min.exchanged.genes & iteration <= n.iterations){
     cat("k-means iteration:",iteration,"and",(n.iterations - iteration),"iterations left\n")
 
-    new.partition <- apply(expr.data,MARGIN=2,getBestModuleCor,
+    new.partition <- apply(expr.data,MARGIN=2,
+                           getBestModuleCor,
                            centroids=centroids,
                            signed=(net.type == "signed"),
-                           cor.type=cor.type)
+                           cor.type="pearson")
 
     partitions[[iteration + 1]] <- new.partition
     #Get the control values for the new partition
-    exchanged.gene.count <- length(getExchangedGenes(partitions[[iteration]],
-                                                     partitions[[iteration + 1]]))
-    cat(exchanged.gene.count,
+    exchanged.genes <- length(getExchangedGenes(partitions[[iteration]],
+                                                partitions[[iteration + 1]]))
+    cat(exchanged.genes,
         "genes moved to another module by k-means\n")
-    #print(new.partition)
     new.partition.in.colors <- centroid.labels[unlist(new.partition)]
-    #print("New partition colors")
-    #print(head(new.partition.in.colors))
-    centroids <- getNewCentroids(expr.data,new.partition.in.colors,centroid.labels,centroid.type)
-    #centroids <- unlist(centroids)
+    centroids <- getNewCentroids(expr.data,new.partition.in.colors,centroid.labels)
 
-    exchanged.genes = exchanged.gene.count
     iteration = iteration + 1
+    allgchanges = c(allgchanges,exchanged.genes)
   }
   cat("We finish with",iteration,"iterations\n")
   cat("Last number of gene changes where",exchanged.genes,"\n")
   #saveRDS(partitions,partitions.file)
 
   print("The algorithm finished correctly")
-  result.net = genNetFromPartition(expr.data.file=expr.data,
-                                   excludeGrey=excludeGrey,
-                                   beta=beta,
-                                   partitions.file=partitions,
-                                   index=-1)
-  if(typeof(final.net) == "character"){
-    saveRDS(result.net,final.net)
-    cat("Final network saved at",final.net,"\n")
-    return(final.net)
-  }
-  return(result.net)
+  net = NULL
+  net$net = genNetFromPartition(expr.data.file=expr.data,
+                                excludeGrey=excludeGrey,
+                                partitions.file=partitions,
+                                index=-1)
+  net$partitions = partitions
+  net$cgenes = allgchanges
+  return(net)
 }
 
-getNewCentroids <- function(expr.data,partition.in.colors,centroid.labels,centroid.type=MEAN_CENTROID){
-  #print(paste0("Generating centroids with ",centroid.type))
-  return(getNewCentroidsEG(expr.data,partition.in.colors,centroid.labels))
-  print(paste0("Centroid type ",centroid.type, " unknown. Returning NULL"))
-  return(NULL)
-}
-
-getNewCentroidsEG = function(expr.data,partition.in.colors,centroid.labels){
-  #if(sum(partition.in.colors == "grey") < k.means.min.genes.to.consider.grey)
-  #	eg.vectors = moduleEigengenes(expr.data,partition.in.colors, excludeGrey=TRUE)$eigengenes
-  #else
+getNewCentroids <- function(expr.data,partition.in.colors,centroid.labels){
   eg.vectors = WGCNA::moduleEigengenes(expr.data,partition.in.colors, excludeGrey=F)$eigengenes
 
   names(eg.vectors) <- substring(names(eg.vectors),3)
@@ -939,8 +884,8 @@ getNewCentroidsEG = function(expr.data,partition.in.colors,centroid.labels){
   return(eg.vectors)
 }
 
+
 genNetFromPartition = function(expr.data.file,
-                               beta,
                                partitions.file,
                                excludeGrey=F,
                                index=-1){
@@ -986,7 +931,9 @@ genNetFromPartition = function(expr.data.file,
   #¢if(sum(new.net$moduleColors == "grey") >= k.means.min.genes.to.consider.grey)
   #  new.net$MEs  = WGCNA::moduleEigengenes(expr.data,new.net$moduleColors,softPower=beta, excludeGrey=F)$eigengenes
   #else
-  new.net$MEs  = WGCNA::moduleEigengenes(expr.data,new.net$moduleColors,softPower=beta, excludeGrey=excludeGrey)$eigengenes
+  new.net$MEs  = WGCNA::moduleEigengenes(expr.data,
+                                         new.net$moduleColors,
+                                         excludeGrey=excludeGrey)$eigengenes
   return(new.net)
 }
 
@@ -1141,7 +1088,7 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
   while(n.mods < 10 & deep.split < 5){
     dynamicMods = dynamicTreeCut::cutreeDynamic(dendro = geneTree, distM = dissTOM,
                                                 deepSplit = deep.split,
-                                                pamRespectsDendro = T,
+                                                pamRespectsDendro = F,
                                                 respectSmallClusters = F,
                                                 minClusterSize = min.cluster.size)
     n.mods = length(table(dynamicMods))
@@ -1164,7 +1111,7 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
                                    excludeGrey=excludeGrey)
   MEs = MEList$eigengenes
   # Calculate dissimilarity of module eigengenes
-  MEDiss = 1-cor(MEs)
+  MEDiss = 1-cor(MEs,use = "pairwise.complete.obs")
   # Cluster module eigengenes
   METree = flashClust::flashClust(as.dist(MEDiss), method = "average")
 
@@ -1247,20 +1194,6 @@ corDistance = function(a,b,signed=TRUE,cor.type="pearson"){
   if(cor.type=="pearson"){
     if(signed)
       #return(0.5 + 0.5*WGCNA::corFast(a,b)) (Note they are equivalent)
-      return(0.5 * (1 + WGCNA::corFast(a,b)))
-    return(abs(WGCNA::corFast(a,b)))
-  }else{
-    if(signed)
-      #return(0.5 + 0.5*WGCNA::corFast(a,b)) (Note they are equivalent)
-      return(0.5 * (1 + stats::cor(a,b,method=cor.type)))
-    return(abs(stats::cor(a,b,method=cor.type)))
-  }
-}
-
-corDistance = function(a,b,signed=TRUE,cor.type="pearson"){
-  if(cor.type=="pearson"){
-    if(signed)
-      #return(0.5 + 0.5*WGCNA::corFast(a,b)) (Note they are equivalent)
       return(0.5 * (1 + stats::cor(a,b)))
     return(abs(stats::cor(a,b)))
   }else{
@@ -1270,6 +1203,7 @@ corDistance = function(a,b,signed=TRUE,cor.type="pearson"){
     return(abs(stats::cor(a,b,method=cor.type)))
   }
 }
+
 
 getMM = function(net=NULL,
                  expr.data.file=NULL,
@@ -1351,20 +1285,6 @@ getMM = function(net=NULL,
   }
   return(mm)
 
-}
-
-getFileFromPath <- function(file.name){
-  splits <- str_split(file.name,"/")
-  splits <- splits[[1]]
-  return(splits[length(splits)])
-}
-
-getPathFromFullName = function(file.name){
-  splits <- str_split(file.name,"/")
-  splits <- splits[[1]]
-  path = paste0(splits[1:(length(splits)-1)],collapse="/")
-  path = paste0("/",path,"/")
-  return(path)
 }
 
 
