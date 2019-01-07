@@ -251,8 +251,8 @@ postCluster = function(handlers,
       net = net$result
       #print(net)
       cat("Reading TOM",net$tom,"\n")
-      TOM = TOM + scale(readRDS(net$tom))
-
+      tom = scale(readRDS(net$tom))
+      TOM = TOM + tom
       if(removeTOM)
         file.remove(net$tom)
       #file.remove(net$net)
@@ -271,7 +271,7 @@ postCluster = function(handlers,
                                                       deepSplit = deep.split,
                                                       pamRespectsDendro = FALSE,
                                                       respectSmallClusters = F,
-                                                      minClusterSize = 100)
+                                                      minClusterSize = min.cluster.size)
           n.mods = length(table(dynamicMods))
           deep.split = deep.split + 1
         }
@@ -279,7 +279,8 @@ postCluster = function(handlers,
         # Convert numeric lables into colors
         #This will print the same, but using as label for modules the corresponding colors
         localnet = NULL
-        localnet$moduleColors = WGCNA::labels2colors(dynamicMods)
+        localnet$moduleColors = dropGreyModule(WGCNA::labels2colors(dynamicMods))
+
         outnet = CoExpNets::applyKMeans(tissue=tissue,
                                         n.iterations=n.iterations,
                                         net.file=localnet,
@@ -436,7 +437,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
                                                     deepSplit = deep.split,
                                                     pamRespectsDendro = FALSE,
                                                     respectSmallClusters = F,
-                                                    minClusterSize = 100)
+                                                    minClusterSize = min.cluster.size)
         n.mods = length(table(dynamicMods))
         deep.split = deep.split + 1
       }
@@ -445,7 +446,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
       # Convert numeric lables into colors
       #This will print the same, but using as label for modules the corresponding colors
       localnet = NULL
-      localnet$moduleColors = WGCNA::labels2colors(dynamicMods)
+      localnet$moduleColors = dropGreyModule(WGCNA::labels2colors(dynamicMods))
       outnet = CoExpNets::applyKMeans(tissue=tissue,
                                       n.iterations=n.iterations,
                                       net.file=localnet,
@@ -950,6 +951,16 @@ createCentroidMatrix <- function(eigengenes){
   return(my.matrix)
 }
 
+dropGreyModule = function(colors,gcolor="grey"){
+  availableColors = unique(colors)
+  availableColors = availableColors[availableColors != gcolor]
+  gmask = which(colors == gcolor)
+  for(i in gmask)
+    colors[i] = availableColors[sample(1:length(availableColors),1)]
+  return(colors)
+
+}
+
 getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
                                   tissue.name="SNIG",title=NULL,
                                   additional.prefix=NULL,
@@ -1101,9 +1112,7 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
 
   # Convert numeric lables into colors
   #This will print the same, but using as label for modules the corresponding colors
-  dynamicColors = WGCNA::labels2colors(dynamicMods)
-  print(tb <- table(dynamicColors))
-  names(tb) <- paste("ME", names(tb), sep="")
+  dynamicColors = dropGreyModule(WGCNA::labels2colors(dynamicMods))
 
   # Calculate eigengenes
   MEList = WGCNA::moduleEigengenes(expr.data,
@@ -1130,7 +1139,8 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
 
     pdf(file=dendro.name)
     WGCNA::plotDendroAndColors(geneTree, cbind(dynamicColors, mergedColors),
-                               c("Dynamic Tree Cut", "Merged dynamic"),dendroLabels = FALSE,
+                               c("Dynamic Tree Cut", "Merged dynamic"),
+                               dendroLabels = FALSE,
                                hang = 0.03, addGuide = TRUE,
                                guideHang = 0.05,main=title)
     dev.off()
