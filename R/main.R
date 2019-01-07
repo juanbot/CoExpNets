@@ -251,8 +251,8 @@ postCluster = function(handlers,
       net = net$result
       #print(net)
       cat("Reading TOM",net$tom,"\n")
-      tom = scale(readRDS(net$tom))
-      TOM = TOM + tom
+      TOM = TOM + scale(readRDS(net$tom))
+
       if(removeTOM)
         file.remove(net$tom)
       #file.remove(net$net)
