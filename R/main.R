@@ -293,6 +293,7 @@ postCluster = function(handlers,
             #This will print the same, but using as label for modules the corresponding colors
             localnet = NULL
             localnet$moduleColors = CoExpNets::dropGreyModule(WGCNA::labels2colors(dynamicMods))
+            print(localnet$moduleColors)
 
             outnet = CoExpNets::applyKMeans(tissue=tissue,
                                             n.iterations=n.iterations,
@@ -1232,7 +1233,7 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
 corDistance = function(a,b,signed=TRUE,cor.type="pearson"){
   if(cor.type=="pearson"){
     if(signed)
-      return(0.5 + 0.5*WGCNA::corFast(a,b)) #(Note they are equivalent)
+      return(0.5 + 0.5*WGCNA::corFast(x=a,y=b)) #(Note they are equivalent)
     #return(0.5 * (1 + stats::cor(a,b)))
     return(abs(stats::cor(a,b)))
   }else{
