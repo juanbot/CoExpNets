@@ -228,74 +228,91 @@ postCluster = function(handlers,
                        waitFor=24*3600,
                        indexes,
                        job.path){
+  time = Sys.time()
   ngenes = ncol(expr.data)
   TOM = matrix(nrow = ngenes,ncol=ngenes)
   TOM[] = 0
   allsubnets = NULL
 
-  nets = waitForJobs(handlers=handlers,
-                     timeLimit=waitFor,
-                     increment=5,
-                     removeData=T,
-                     removeLogs=F,
-                     qstatworks=F,
-                     wd=job.path)
+  pendingH = handlers
 
-  cat("Just came back from waitForJobs with",length(nets),"handlers\n")
-  lcount = 1
-  for(net in nets){
-    if(is.null(net)){
-      cat("This work have not properly finished\n")
-    }else{
-      #print(net)
-      net = net$result
-      #print(net)
-      cat("Reading TOM",net$tom,"\n")
-      tom = scale(readRDS(net$tom))
-      TOM = TOM + tom
-      if(removeTOM)
-        file.remove(net$tom)
-      #file.remove(net$net)
-      cat("TOM updated\n")
+  while(length(pendingH) > 0 & (Sys.time() - time) < waitFor){
+    cat("We will collect Jobs, still",length(pendingH),"jobs to go\n")
+
+    nets = waitForJobs(handlers=pendingH,
+                       timeLimit=100,
+                       increment=5,
+                       removeData=F,
+                       removeLogs=F,
+                       qstatworks=F,
+                       wd=job.path)
+
+    localPending = NULL
+    cat("Just came back from waitForJobs with",length(nets),"handlers\n")
+    if(length(nets) > 0){
+      lcount = 1
+      for(net in nets){
+        if(is.null(net)){
+          cat("This work have not properly finished\n")
+          localPending[[length(localPending)+1]] = pendingH[[lcount]]
+
+        }else{
+          #print(net)
+          net = net$result
+          #print(net)
+          cat("Reading TOM",net$tom,"\n")
+          tom = scale(readRDS(net$tom))
+          TOM = TOM + tom
+          if(removeTOM)
+            file.remove(net$tom)
+          #file.remove(net$net)
+          cat("TOM updated\n")
 
 
-      if(lcount %% each == 0 | lcount == length(nets)){
-        dissTOM = 1 - TOM/lcount
-        geneTree = flashClust::flashClust(as.dist(dissTOM), method = "average")
-        print("Now the genetree")
-        n.mods = 0
-        deep.split = 2
-        while(n.mods < 10 & deep.split < 5){
-          dynamicMods = dynamicTreeCut::cutreeDynamic(dendro = geneTree,
-                                                      distM = dissTOM,
-                                                      deepSplit = deep.split,
-                                                      pamRespectsDendro = FALSE,
-                                                      respectSmallClusters = F,
-                                                      minClusterSize = min.cluster.size)
-          n.mods = length(table(dynamicMods))
-          deep.split = deep.split + 1
+          if(lcount %% each == 0 | lcount == length(nets)){
+            dissTOM = 1 - TOM/lcount
+            geneTree = flashClust::flashClust(as.dist(dissTOM), method = "average")
+            print("Now the genetree")
+            n.mods = 0
+            deep.split = 2
+            while(n.mods < 10 & deep.split < 5){
+              dynamicMods = dynamicTreeCut::cutreeDynamic(dendro = geneTree,
+                                                          distM = dissTOM,
+                                                          deepSplit = deep.split,
+                                                          pamRespectsDendro = FALSE,
+                                                          respectSmallClusters = F,
+                                                          minClusterSize = min.cluster.size)
+              n.mods = length(table(dynamicMods))
+              deep.split = deep.split + 1
+            }
+            rm(dissTOM)
+            # Convert numeric lables into colors
+            #This will print the same, but using as label for modules the corresponding colors
+            localnet = NULL
+            localnet$moduleColors = dropGreyModule(WGCNA::labels2colors(dynamicMods))
+
+            outnet = CoExpNets::applyKMeans(tissue=tissue,
+                                            n.iterations=n.iterations,
+                                            net.file=localnet,
+                                            expr.data=expr.data)
+
+            net$subcluster = outnet$net$moduleColors
+
+          }
+          net$indexes = indexes[lcount,]
+          allsubnets[[lcount]] = net
         }
-        rm(dissTOM)
-        # Convert numeric lables into colors
-        #This will print the same, but using as label for modules the corresponding colors
-        localnet = NULL
-        localnet$moduleColors = dropGreyModule(WGCNA::labels2colors(dynamicMods))
 
-        outnet = CoExpNets::applyKMeans(tissue=tissue,
-                                        n.iterations=n.iterations,
-                                        net.file=localnet,
-                                        expr.data=expr.data)
-
-        net$subcluster = outnet$net$moduleColors
-
+        lcount = lcount + 1
+        flush.console()
       }
-      net$indexes = indexes[lcount,]
-      allsubnets[[lcount]] = net
+      pendingH = localPending
+      Sys.sleep(30)
     }
 
-    lcount = lcount + 1
-    flush.console()
+
   }
+
   lcount = lcount - 1
   finalnet = NULL
   finalnet$file = paste0(job.path,"/netBoot",tissue,".default.it.",n.iterations,".b.",nrow(indexes),".rds")
@@ -1203,12 +1220,12 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
 corDistance = function(a,b,signed=TRUE,cor.type="pearson"){
   if(cor.type=="pearson"){
     if(signed)
-      #return(0.5 + 0.5*WGCNA::corFast(a,b)) (Note they are equivalent)
-      return(0.5 * (1 + stats::cor(a,b)))
+      return(0.5 + 0.5*WGCNA::corFast(a,b)) #(Note they are equivalent)
+    #return(0.5 * (1 + stats::cor(a,b)))
     return(abs(stats::cor(a,b)))
   }else{
     if(signed)
-      #return(0.5 + 0.5*WGCNA::corFast(a,b)) (Note they are equivalent)
+      #return(0.5 + 0.5*WGCNA::corFast(a,b)) #(Note they are equivalent)
       return(0.5 * (1 + stats::cor(a,b,method=cor.type)))
     return(abs(stats::cor(a,b,method=cor.type)))
   }
