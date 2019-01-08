@@ -1141,7 +1141,7 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
 
   # Convert numeric lables into colors
   #This will print the same, but using as label for modules the corresponding colors
-  dynamicColors = dropGreyModule(WGCNA::labels2colors(dynamicMods))
+  dynamicColors = CoExpNets::dropGreyModule(WGCNA::labels2colors(dynamicMods))
 
   # Calculate eigengenes
   MEList = WGCNA::moduleEigengenes(expr.data,
