@@ -188,6 +188,7 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
     }
     handlers[[i]] = launchJob(parameters = params,clParams = clParams,
                               prefix=ltissue,
+                              justPrepareForLaunch=T,
                               wd=job.path)
   }
   #Now we send the post job
@@ -208,11 +209,13 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
   params$fun = postCluster
   singlehandler = launchJob(parameters = params,
                             clParams = clParamsPost,
+                            justPrepareForLaunch=T,
                             prefix=ltissue,
                             wd=job.path)
   handf = paste0(job.path,"/",tissue,"_handlers.rds")
   handlers[[i+1]] = singlehandler
   saveRDS(handlers,handf)
+  handlers = submitJobs(rev(handlers))
   return(handf)
 }
 
@@ -289,7 +292,7 @@ postCluster = function(handlers,
             # Convert numeric lables into colors
             #This will print the same, but using as label for modules the corresponding colors
             localnet = NULL
-            localnet$moduleColors = dropGreyModule(WGCNA::labels2colors(dynamicMods))
+            localnet$moduleColors = CoExpNets::dropGreyModule(WGCNA::labels2colors(dynamicMods))
 
             outnet = CoExpNets::applyKMeans(tissue=tissue,
                                             n.iterations=n.iterations,
@@ -463,7 +466,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
       # Convert numeric lables into colors
       #This will print the same, but using as label for modules the corresponding colors
       localnet = NULL
-      localnet$moduleColors = dropGreyModule(WGCNA::labels2colors(dynamicMods))
+      localnet$moduleColors = CoExpNets::dropGreyModule(WGCNA::labels2colors(dynamicMods))
       outnet = CoExpNets::applyKMeans(tissue=tissue,
                                       n.iterations=n.iterations,
                                       net.file=localnet,
@@ -968,8 +971,17 @@ createCentroidMatrix <- function(eigengenes){
   return(my.matrix)
 }
 
+#' Title
+#'
+#' @param colors
+#' @param gcolor
+#'
+#' @return
+#' @export
+#'
+#' @examples
 dropGreyModule = function(colors,gcolor="grey"){
-  availableColors = unique(colors)
+  availåableColors = unique(colors)
   availableColors = availableColors[availableColors != gcolor]
   gmask = which(colors == gcolor)
   for(i in gmask)
