@@ -981,7 +981,7 @@ createCentroidMatrix <- function(eigengenes){
 #'
 #' @examples
 dropGreyModule = function(colors,gcolor="grey"){
-  availåableColors = unique(colors)
+  availableColors = unique(colors)
   availableColors = availableColors[availableColors != gcolor]
   gmask = which(colors == gcolor)
   for(i in gmask)
