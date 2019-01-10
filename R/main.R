@@ -174,7 +174,7 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
       rownames(datain) = sampids
 
       net = getDownstreamNetwork(tissue=tissue,
-                                 n.iterations=0,
+                                 n.iterations=n.iterations,
                                  save.tom = save.tom,
                                  min.cluster.size=min.cluster.size,
                                  save.plots = F,
@@ -257,8 +257,8 @@ postCluster = function(handlers,
 
     cat("We will collect Jobs, still",length(handlers),"jobs to go\n")
     nets = waitForJobs(handlers=handlers,
-                       timeLimit=50,
-                       increment=30,
+                       timeLimit=20,
+                       increment=20,
                        removeData=F,
                        removeLogs=F,
                        qstatworks=F,
@@ -285,8 +285,8 @@ postCluster = function(handlers,
           cat("Accumulating TOM",net$tom,"\n")
           if(blockTOM){
             cat("Reading TOM\n")
-            TOM = TOM + readTOM(net$tom)
-            removeTOM(net$tom)
+            TOM = TOM + CoExpNets::readTOM(net$tom)
+            CoExpNets::removeTOM(net$tom)
             print("Done")
           }else{
             cat("Reading TOM\n")
@@ -297,11 +297,11 @@ postCluster = function(handlers,
             TOM = TOM + tom
             print("Done")
             rm("tom")
+            if(removeTOM)
+              file.remove(net$tom)
           }
 
           tomCount = tomCount + 1
-          if(removeTOM)
-            file.remove(net$tom)
           #file.remove(net$net)
           print("TOM updated\n")
           if((initHandlers - length(handlers)) %% each == 0 | length(handlers) == 0){
@@ -358,7 +358,7 @@ postCluster = function(handlers,
     names(adjacency) = colnames(expr.data)
     if(blockTOM){
       finalnet$tom = paste0(finalnet$file,".tom.")
-      saveTOM(TOM,outnet$net$moduleColors,finalnet$tom)
+      CoExpNets::saveTOM(TOM,outnet$net$moduleColors,finalnet$tom)
     }else{
       finalnet$tom = paste0(finalnet$file,".tom.rds")
       saveRDS(TOM,finalnet$tom)
@@ -381,18 +381,16 @@ postCluster = function(handlers,
   }
 
   if(allsampsnet){
-    fallsamplesnet = CoExpNets::getDownstreamNetwork(expr.data=expr.data,
-                                                     tissue=paste0(tissue,"_allsamps_"),
-                                                     job.path=job.path,
-                                                     min.cluster.size = min.cluster.size,
-                                                     save.plots=F,
-                                                     excludeGrey=F,
-                                                     net.type="signed",
-                                                     debug=F,
-                                                     n.iterations=n.iterations,
-                                                     save.tom=F)$net
-    finalnet$allsamplesnet = readRDS(fallsamplesnet)
-    file.remove(fallsamplesnet)
+    finalnet$allsamplesnet = CoExpNets::getDownstreamNetwork(expr.data=expr.data,
+                                                             tissue=paste0(tissue,"_allsamps_"),
+                                                             job.path=job.path,
+                                                             min.cluster.size = min.cluster.size,
+                                                             save.plots=F,
+                                                             excludeGrey=F,
+                                                             net.type="signed",
+                                                             debug=F,
+                                                             n.iterations=n.iterations,
+                                                             save.tom=F)$net
   }
 
   if(!is.null(finalnet)){
@@ -654,7 +652,6 @@ getDownstreamNetwork = function(tissue="mytissue",
     else
       saveRDS(net.and.tom$tom,paste0(final.net,".tom.rds"))
   }
-  rm("net.and.tom$tom")
 
   foutnet = NULL
   foutnet$beta = net.and.tom$net$beta
@@ -960,7 +957,8 @@ applyKMeans <- function(tissue,
 }
 
 getNewCentroids <- function(expr.data,partition.in.colors,centroid.labels){
-  eg.vectors = WGCNA::moduleEigengenes(expr.data,partition.in.colors, excludeGrey=F)$eigengenes
+  eg.vectors = WGCNA::moduleEigengenes(expr.data,
+                                       partition.in.colors,excludeGrey=F)$eigengenes
 
   names(eg.vectors) <- substring(names(eg.vectors),3)
   eg.vectors <- eg.vectors[,centroid.labels]
@@ -1204,6 +1202,8 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
   # Convert numeric lables into colors
   #This will print the same, but using as label for modules the corresponding colors
   dynamicColors = CoExpNets::dropGreyModule(WGCNA::labels2colors(dynamicMods))
+  print(tissue.name)
+  print(table(dynamicMods))
 
   # Calculate eigengenes
   MEList = WGCNA::moduleEigengenes(expr.data,
@@ -1220,9 +1220,10 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
   merge = WGCNA::mergeCloseModules(expr.data, dynamicColors, cutHeight = MEDissThres,
                                    verbose = 3, unassdColor="grey",getNewUnassdME = FALSE)
   # The merged module colors
-  mergedColors = merge$colors
+  mergedColors = CoExpNets::dropGreyModule(merge$colors)
   # Eigengenes of the new merged modules
   mergedMEs = merge$newMEs
+  print(table(mergedColors))
 
   if(save.plots){
     dendro.name = paste0(additional.prefix,"_dendro_colors.pdf")
@@ -1242,7 +1243,8 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
     METree$labels <- paste0(names(tb), ":", tb)
 
     plot(METree, main = paste0(title," ",tissue.name,
-                               " Clustering of module eigengenes"), xlab = "", sub = "")
+                               " Clustering of module eigengenes"),
+         xlab = "", sub = "")
     # Plot the cut line into the dendrogram
     abline(h=MEDissThres, col = "red")
     dev.off()
