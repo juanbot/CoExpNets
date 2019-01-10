@@ -106,6 +106,7 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
                                  allsampsnet=F,
                                  each=1,
                                  tissue="Bootstrap",
+                                 blockTOM=F,
                                  clParams=" -l nodes=1:nv ",
                                  clParamsPost=clParams,
                                  waitFor=24*3600,
@@ -157,7 +158,8 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
     params$save.tom =T
     params$tissue = ltissue
     params$maskd = maskd
-    params$fun = function(tissue,datain,mode,min.cluster.size,its,outfolder,save.tom,maskd){
+    params$blockTOM = blockTOM
+    params$fun = function(tissue,datain,mode,min.cluster.size,its,blockTOM,outfolder,save.tom,maskd){
       library(CoExpNets)
       genes = colnames(datain)
       sampids = rownames(datain)
@@ -177,6 +179,7 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
                                  min.cluster.size=min.cluster.size,
                                  save.plots = F,
                                  excludeGrey = F,
+                                 blockTOM=blockTOM,
                                  beta=-1,
                                  net.type = "signed",
                                  debug=F,
@@ -207,6 +210,7 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
   params$job.path = job.path
   params$mode = mode
   params$waitFor = waitFor
+  params$blockTOM = blockTOM
   params$fun = postCluster
   singlehandler = launchJob(parameters = params,
                             clParams = clParamsPost,
@@ -234,6 +238,7 @@ postCluster = function(handlers,
                        allsampsnet,
                        n.iterations,
                        min.cluster.size,
+                       blockTOM=F,
                        removeTOM=F,
                        each=1,
                        mode,
@@ -266,52 +271,75 @@ postCluster = function(handlers,
       if(is.null(net)){
         cat("This work have not properly finished\n")
       }else{
+
         handlers[[jobname]] = NULL
         #print(net)
         net = net$result
-        #print(net)
-        cat("Reading TOM",net$tom,"\n")
-        tom = scale(readRDS(net$tom))
-        TOM = TOM + tom
-        tomCount = tomCount + 1
-        if(removeTOM)
-          file.remove(net$tom)
-        #file.remove(net$net)
-        cat("TOM updated\n")
-        if((initHandlers - length(handlers)) %% each == 0 | length(handlers) == 0){
-          dissTOM = 1 - TOM/tomCount
+        ftocheck = net$tom
+        if(blockTOM)
+          ftocheck = paste0(ftocheck,"_metadata.rds")
 
-          geneTree = flashClust::flashClust(as.dist(dissTOM), method = "average")
-          print("Now the genetree")
-          n.mods = 0
-          deep.split = 2
-          while(n.mods < 10 & deep.split < 5){
-            dynamicMods = dynamicTreeCut::cutreeDynamic(dendro = geneTree,
-                                                        distM = dissTOM,
-                                                        deepSplit = deep.split,
-                                                        pamRespectsDendro = FALSE,
-                                                        respectSmallClusters = F,
-                                                        minClusterSize = min.cluster.size)
-            n.mods = length(table(dynamicMods))
-            deep.split = deep.split + 1
+        if(file.exists(ftocheck)){
+
+          #print(net)
+          cat("Accumulating TOM",net$tom,"\n")
+          if(blockTOM){
+            cat("Reading TOM\n")
+            TOM = TOM + readTOM(net$tom)
+            print("Done")
+          }else{
+            cat("Reading TOM\n")
+            TOM = TOM + readTOM(net$tom)
+            cat("Quantile normalization\n")
+            tom = preprocessCore::normalize.quantiles(tom)
+            print("Adding TOM")
+            TOM = TOM + tom
+            print("Done")
+            rm("tom")
+
+
           }
-          rm(dissTOM)
-          # Convert numeric lables into colors
-          #This will print the same, but using as label for modules the corresponding colors
-          localnet = NULL
-          localnet$moduleColors = CoExpNets::dropGreyModule(WGCNA::labels2colors(dynamicMods))
-          print(table(localnet$moduleColors))
 
-          outnet = CoExpNets::applyKMeans(tissue=tissue,
-                                          n.iterations=n.iterations,
-                                          net.file=localnet,
-                                          expr.data=expr.data)
+          tomCount = tomCount + 1
+          if(removeTOM)
+            file.remove(net$tom)
+          #file.remove(net$net)
+          print("TOM updated\n")
+          if((initHandlers - length(handlers)) %% each == 0 | length(handlers) == 0){
+            dissTOM = 1 - TOM/tomCount
 
-          net$subcluster = outnet$net$moduleColors
+            geneTree = flashClust::flashClust(as.dist(dissTOM), method = "average")
+            print("Now the genetree")
+            n.mods = 0
+            deep.split = 2
+            while(n.mods < 10 & deep.split < 5){
+              dynamicMods = dynamicTreeCut::cutreeDynamic(dendro = geneTree,
+                                                          distM = dissTOM,
+                                                          deepSplit = deep.split,
+                                                          pamRespectsDendro = FALSE,
+                                                          respectSmallClusters = F,
+                                                          minClusterSize = min.cluster.size)
+              n.mods = length(table(dynamicMods))
+              deep.split = deep.split + 1
+            }
+            rm(dissTOM)
+            # Convert numeric lables into colors
+            #This will print the same, but using as label for modules the corresponding colors
+            localnet = NULL
+            localnet$moduleColors = CoExpNets::dropGreyModule(WGCNA::labels2colors(dynamicMods))
+            print(table(localnet$moduleColors))
 
+            outnet = CoExpNets::applyKMeans(tissue=tissue,
+                                            n.iterations=n.iterations,
+                                            net.file=localnet,
+                                            expr.data=expr.data)
+
+            net$subcluster = outnet$net$moduleColors
+
+          }
+          #net$indexes = indexes[tomCount,]
+          allsubnets[[jobname]] = net
         }
-        #net$indexes = indexes[tomCount,]
-        allsubnets[[jobname]] = net
       }
     }
 
@@ -324,17 +352,25 @@ postCluster = function(handlers,
   if(length(allsubnets) > 0){
     finalnet$beta = as.integer(mean(unlist(lapply(allsubnets,function(x){return(x$beta)}))))
     finalnet$file = paste0(job.path,"/netBoot",tissue,".",finalnet$beta,".it.",n.iterations,".b.",nrow(indexes),".rds")
-    finalnet$tom = paste0(finalnet$file,".tom.rds")
+
     TOM = TOM/tomCount
     adjacency = apply(TOM,2,sum)
     adjacency = adjacency/length(adjacency)
     names(adjacency) = colnames(expr.data)
-    saveRDS(TOM,finalnet$tom)
+    if(blockTOM){
+      finalnet$tom = paste0(finalnet$file,".tom.")
+      saveTOM(TOM,outnet$net$moduleColors,finalnet$tom)
+    }else{
+      finalnet$tom = paste0(finalnet$file,".tom.rds")
+      saveRDS(TOM,finalnet$tom)
+    }
+
+
     finalnet$adjacency = adjacency
     finalnet$moduleColors = outnet$net$moduleColors
     finalnet$subnets = allsubnets
     finalnet$mode = mode
-    rm(TOM)
+    rm("TOM")
     outnet = CoExpNets::applyKMeans(tissue=tissue,
                                     n.iterations=n.iterations,
                                     net.file=finalnet,
@@ -394,6 +430,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
                                allsampsnet=F,
                                excludeGrey=F,
                                each=1,
+                               blockTOM=F,
                                min.cluster.size=100,
                                tissue="Bootstrap",
                                b=10,...){
@@ -438,14 +475,26 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
                                tissue=ltissue,
                                job.path=job.path,
                                excludeGrey = excludeGrey,
+                               blockTOM=blockTOM,
                                save.plots=F,
                                n.iterations=0,
                                save.tom=T,...)
 
-    cat("Accumulating TOM",count,"\n")
-    TOM = TOM + scale(readRDS(net$tom))
-    file.remove(net$tom)
-
+    cat("Accumulating TOM",net$tom,"\n")
+    cat("Reading TOM\n")
+    if(!blockTOM){
+      tom = readRDS(net$tom)
+      file.remove(net$tom)
+      cat("Quantile normalization\n")
+      tom = preprocessCore::normalize.quantiles(tom)
+    }else{
+      tom = readTOM(net$tom)
+      removeTOM(net$tom)
+    }
+    cat("Adding TOM\n")
+    TOM = TOM + tom
+    cat("Done\n")
+    rm("tom")
     if(count %% each == 0 | count == nrow(indexes)){
       dissTOM = 1 - TOM/count
       geneTree = flashClust::flashClust(as.dist(dissTOM), method = "average")
@@ -462,7 +511,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
         n.mods = length(table(dynamicMods))
         deep.split = deep.split + 1
       }
-      rm(dissTOM)
+      rm("dissTOM")
 
       # Convert numeric lables into colors
       #This will print the same, but using as label for modules the corresponding colors
@@ -560,6 +609,7 @@ getDownstreamNetwork = function(tissue="mytissue",
                                 min.cluster.size=30,		#Minimum number of genes to form a cluster
                                 net.type="signed",			#Leave it like that (see WGCNA docs)
                                 debug=F,
+                                blockTOM=F,
                                 save.tom=F,
                                 save.plots=F,
                                 excludeGrey=FALSE){
@@ -590,15 +640,22 @@ getDownstreamNetwork = function(tissue="mytissue",
     final.net = paste0(job.path,"/","net",tissue,".",
                        net.and.tom$net$beta,".it.",n.iterations,".rds")
 
-  if(save.tom)
-    saveRDS(net.and.tom$tom,paste0(final.net,".tom.rds"))
-
   outnet = CoExpNets::applyKMeans(tissue=tissue,
                                   n.iterations=n.iterations,
                                   net.file=net.and.tom$net,
                                   expr.data=expr.data,
                                   excludeGrey=excludeGrey,
                                   min.exchanged.genes = min.exchanged.genes)
+
+  if(save.tom){
+    if(blockTOM)
+      saveTOM(tom=net.and.tom$tom,
+              clusters=outnet$net$moduleColors,
+              filepref=paste0(final.net,".tom."))
+    else
+      saveRDS(net.and.tom$tom,paste0(final.net,".tom.rds"))
+  }
+  rm("net.and.tom$tom")
 
   foutnet = NULL
   foutnet$beta = net.and.tom$net$beta
@@ -607,8 +664,14 @@ getDownstreamNetwork = function(tissue="mytissue",
   foutnet$partitions = outnet$partitions
   foutnet$cgenes = outnet$cgenes
 
-  if(save.tom)
-    foutnet$tom = paste0(final.net,".tom.rds")
+  if(save.tom){
+    if(blockTOM)
+      foutnet$tom = paste0(final.net,".tom.")
+    else
+      foutnet$tom = paste0(final.net,".tom.rds")
+  }
+
+
 
   if(save.plots){
     cat("Generating mod sizes for",final.net,"\n")
@@ -618,7 +681,6 @@ getDownstreamNetwork = function(tissue="mytissue",
     pdf(paste0(final.net,".Eigengenes_clustering.pdf"))
     plotEGClustering(which.one="new",tissue=final.net)
     dev.off()
-
   }
   return(foutnet)
 }
@@ -1431,3 +1493,47 @@ trasposeDataFrame = function(file.in,first.c.is.name=F){
   }
   return(data.t)
 }
+
+saveTOM = function(tom, clusters, filepref){
+  modules = unique(clusters)
+  metadata = NULL
+  lapply(modules,function(x){
+    mask = clusters %in% x
+    tomname = paste0(filepref,"_",x,".rds")
+    saveRDS(tom[mask,mask],tomname)
+    metadata[[x]] <<- list(mask=mask,tomname=tomname)
+  })
+  saveRDS(metadata,paste0(filepref,"_metadata.rds"))
+}
+
+readTOM = function(filepref){
+  mdfile = paste0(filepref,"_metadata.rds")
+  if(!file.exists(mdfile))
+    stop(paste0("Error: metadata file",mdfile," not found"))
+
+  metadata = readRDS(mdfile)
+  modules = names(metadata)
+  size = length(metadata[[modules[1]]]$mask)
+  tom = matrix(ncol=size,nrow=size)
+  tom[] = 0
+  for(module in modules){
+    cat("Reading module",module,"\n")
+    smalltom = readRDS(metadata[[module]]$tomname)
+    mask = metadata[[module]]$mask
+    tom[mask,mask] = smalltom
+  }
+  return(tom)
+}
+
+removeTOM = function(filepref){
+  mdfile = paste0(filepref,"_metadata.rds")
+  if(!file.exists(mdfile))
+    stop(paste0("Error: metadata file",mdfile," not found"))
+
+  metadata = readRDS(mdfile)
+  modules = names(metadata)
+  for(module in modules)
+    file.remove(metadata[[module]]$tomname)
+  file.remove(paste0(filepref,"_metadata.rds"))
+}
+
