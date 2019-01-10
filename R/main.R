@@ -286,6 +286,7 @@ postCluster = function(handlers,
           if(blockTOM){
             cat("Reading TOM\n")
             TOM = TOM + readTOM(net$tom)
+            removeTOM(net$tom)
             print("Done")
           }else{
             cat("Reading TOM\n")
@@ -296,8 +297,6 @@ postCluster = function(handlers,
             TOM = TOM + tom
             print("Done")
             rm("tom")
-
-
           }
 
           tomCount = tomCount + 1
