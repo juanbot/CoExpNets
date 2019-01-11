@@ -936,6 +936,7 @@ applyKMeans <- function(tissue,
     cat(exchanged.genes,
         "genes moved to another module by k-means\n")
     new.partition.in.colors <- centroid.labels[unlist(new.partition)]
+    print(table(new.partition.in.colors))
     centroids <- getNewCentroids(expr.data,new.partition.in.colors,centroid.labels)
 
     iteration = iteration + 1
@@ -1195,15 +1196,11 @@ getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
     deep.split = deep.split + 1
   }
 
-  #This will print the tissue an the number of genes by module
+  dynamicColors = WGCNA::labels2colors(dynamicMods)
+  print(table(dynamicColors))
+  dynamicColors = CoExpNets::dropGreyModule(dynamicColors)
   print(tissue.name)
-  print(table(dynamicMods))
-
-  # Convert numeric lables into colors
-  #This will print the same, but using as label for modules the corresponding colors
-  dynamicColors = CoExpNets::dropGreyModule(WGCNA::labels2colors(dynamicMods))
-  print(tissue.name)
-  print(table(dynamicMods))
+  print(table(dynamicColors))
 
   # Calculate eigengenes
   MEList = WGCNA::moduleEigengenes(expr.data,
