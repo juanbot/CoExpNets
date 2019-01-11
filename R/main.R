@@ -941,7 +941,8 @@ applyKMeans <- function(tissue,
                                                 partitions[[iteration + 1]]))
     cat(exchanged.genes,
         "genes moved to another module by k-means\n")
-    new.partition.in.colors <- centroid.labels[unlist(new.partition)]
+    new.partition.in.colors <- WGCNA::labels2colors(unlist(new.partition))
+    names(new.partition.in.colors) = names(unlist(new.partition))
     print(table(new.partition.in.colors))
     cat("We got",length(unique(new.partition.in.colors)),"modules in partition\n")
     cat("We have",ncol(expr.data),"genes in expr.data\n")
