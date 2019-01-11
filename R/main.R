@@ -931,7 +931,7 @@ applyKMeans <- function(tissue,
 
     cat("We got",length(new.partition),"genes in partition\n")
     cat("We got",length(unique(new.partition)),"modules in partition\n")
-
+    print(unique(new.partition))
     partitions[[iteration + 1]] <- new.partition
     #Get the control values for the new partition
     exchanged.genes <- length(getExchangedGenes(partitions[[iteration]],
