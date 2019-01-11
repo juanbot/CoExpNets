@@ -884,7 +884,7 @@ applyKMeans <- function(tissue,
   #This variable is fixed and used as a reference to indicate the
   #modules used (they are colours but the position within the vector is
   #also relevant)
-  centroid.labels <- substring(names(eigengenes$eigengenes),3)
+  centroid.labels <- unique(c(substring(names(eigengenes$eigengenes),3),partition.in.colors))
   print("Module colors are")
   print(sort(centroid.labels))
 
