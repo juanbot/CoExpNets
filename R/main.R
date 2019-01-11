@@ -514,10 +514,10 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
       #This will print the same, but using as label for modules the corresponding colors
       localnet = NULL
       localnet$moduleColors = CoExpNets::dropGreyModule(WGCNA::labels2colors(dynamicMods))
-      outnet = CoExpNets::applyKMeans(tissue=tissue,
-                                      n.iterations=n.iterations,
-                                      net.file=localnet,
-                                      expr.data=expr.data)
+      outnet = applyKMeans(tissue=tissue,
+                           n.iterations=n.iterations,
+                           net.file=localnet,
+                           expr.data=expr.data)
 
       net$subcluster = outnet$net$moduleColors
 
@@ -541,10 +541,10 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
   finalnet$moduleColors = outnet$net$moduleColors
   finalnet$subnets = allsubnets
 
-  outnet = CoExpNets::applyKMeans(tissue=tissue,
-                                  n.iterations=n.iterations,
-                                  net.file=finalnet,
-                                  expr.data=expr.data)
+  outnet = applyKMeans(tissue=tissue,
+                       n.iterations=n.iterations,
+                       net.file=finalnet,
+                       expr.data=expr.data)
   finalnet$moduleColors = outnet$net$moduleColors
   finalnet$MEs = outnet$net$MEs
   finalnet$mode = mode
@@ -885,8 +885,8 @@ applyKMeans <- function(tissue,
   #modules used (they are colours but the position within the vector is
   #also relevant)
   centroid.labels <- substring(names(eigengenes$eigengenes),3)
-  #print("Module colors are")
-  #print(head(centroid.labels))
+  print("Module colors are")
+  print(sort(centroid.labels))
 
   #Step 4
   k <- length(eigengenes$eigengenes)
@@ -894,8 +894,8 @@ applyKMeans <- function(tissue,
   #as much rows as samples
   centroids <- createCentroidMatrix(eigengenes$eigengenes)
 
-  #print("We have generated centroids")
-  #print(head(centroids))
+  print("We have generated centroids")
+  print(sort(centroids))
 
 
   #Step 5
@@ -929,6 +929,9 @@ applyKMeans <- function(tissue,
                            signed=(net.type == "signed"),
                            cor.type="pearson")
 
+    cat("We got",length(new.partition),"genes in partition\n")
+    cat("We got",length(unique(new.partition)),"modules in partition\n")
+
     partitions[[iteration + 1]] <- new.partition
     #Get the control values for the new partition
     exchanged.genes <- length(getExchangedGenes(partitions[[iteration]],
@@ -937,6 +940,10 @@ applyKMeans <- function(tissue,
         "genes moved to another module by k-means\n")
     new.partition.in.colors <- centroid.labels[unlist(new.partition)]
     print(table(new.partition.in.colors))
+    cat("We got",length(unique(new.partition.in.colors)),"modules in partition\n")
+    cat("We have",ncol(expr.data),"genes in expr.data\n")
+    cat("We have",length(new.partition.in.colors),"genes in partition\n")
+
     centroids <- getNewCentroids(expr.data,new.partition.in.colors,centroid.labels)
 
     iteration = iteration + 1
