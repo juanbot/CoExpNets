@@ -925,10 +925,10 @@ applyKMeans <- function(tissue,
     cat("k-means iteration:",iteration,"and",(n.iterations - iteration),"iterations left\n")
 
     new.clusters <- unlist(apply(expr.data,2,
-                          getBestModuleCor,
-                          centroids=centroids,
-                          signed=(net.type == "signed"),
-                          cor.type="pearson"))
+                                 getBestModuleCor,
+                                 centroids=centroids,
+                                 signed=(net.type == "signed"),
+                                 cor.type="pearson"))
     print(table(new.clusters))
     new.clusters = colnames(centroids)[new.clusters]
     print(table(new.clusters))
@@ -952,11 +952,11 @@ applyKMeans <- function(tissue,
     iteration = iteration + 1
     allgchanges = c(allgchanges,exchanged.genes)
   }
-  cat("We finish with",iteration,"iterations\n")
+
+  cat("We finish with",(iteration-1),"iterations\n")
   cat("Last number of gene changes where",exchanged.genes,"\n")
   #saveRDS(partitions,partitions.file)
 
-  print("The algorithm finished correctly")
   net = NULL
   net$moduleColors = new.clusters
   net$MEs = WGCNA::moduleEigengenes(expr.data,
@@ -965,6 +965,7 @@ applyKMeans <- function(tissue,
 
   net$partitions = partitions
   net$cgenes = allgchanges
+  print("The k-means algorithm finished correctly")
   return(net)
 }
 
@@ -981,7 +982,6 @@ getNewCentroids <- function(expr.data,partition.in.colors){
 
 
 getBestModuleCor = function(gene,centroids,signed=TRUE,cor.type){
-
   return(which.max(corDistance(a=centroids,b=gene,signed=signed,cor.type=cor.type)))
 }
 
@@ -1256,13 +1256,13 @@ corDistance = function(a,b,signed=TRUE,cor.type="pearson"){
   if(cor.type=="pearson"){
     if(signed)
       #return(0.5 + 0.5*WGCNA::corFast(x=a,y=b)) #(Note they are equivalent)
-      return(0.5 * (1 + stats::cor(a,b)))
+      return(0.5 * (1 + stats::cor(a,b,use="pairwise.complete.obs")))
     return(abs(stats::cor(a,b)))
   }else{
     if(signed)
       #return(0.5 + 0.5*WGCNA::corFast(a,b)) #(Note they are equivalent)
       return(0.5 * (1 + stats::cor(a,b,method=cor.type)))
-    return(abs(stats::cor(a,b,method=cor.type)))
+    return(abs(stats::cor(a,b,method=cor.type,use="pairwise.complete.obs")))
   }
 }
 
