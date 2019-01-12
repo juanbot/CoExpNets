@@ -875,38 +875,39 @@ applyKMeans <- function(tissue,
   ##Step 1.
 
   #Gather the current partition we start from
-  partition.in.colors <- net$moduleColors
+  #partition.in.colors <- net$moduleColors
+  clusters = net$moduleColors
 
   #Step 3
-  eigengenes = WGCNA::moduleEigengenes(expr.data,partition.in.colors,
+  eigengenes = WGCNA::moduleEigengenes(expr.data,net$moduleColors,
                                        excludeGrey=excludeGrey)
 
   #This variable is fixed and used as a reference to indicate the
   #modules used (they are colours but the position within the vector is
   #also relevant)
-  centroid.labels <- unique(c(substring(names(eigengenes$eigengenes),3),partition.in.colors))
+  #centroid.labels <- substring(names(eigengenes$eigengenes),3)
   print("Module colors are")
-  print(sort(centroid.labels))
+  print(sort(unique(net$moduleColors)))
 
   #Step 4
-  k <- length(eigengenes$eigengenes)
+  k = length(eigengenes$eigengenes)
+  cat("Working with",k,"modules/centroids\n")
   #Centroids must be a matrix with as much colums as centroids,
   #as much rows as samples
-  centroids <- createCentroidMatrix(eigengenes$eigengenes)
+  centroids = createCentroidMatrix(eigengenes$eigengenes)
 
-  print("We have generated centroids")
-  print(sort(centroids))
-
+  #print("We have generated centroids")
+  #print(sort(centroids))
 
   #Step 5
   #For storage of all the partitions created during the iterations
-  partitions <- list()
+  partitions = list()
   #A partition will be a list of as much elements as genes and for the
   #i-th position it stores the index of the module the ith gene belongs
   #to, and the color can be found in "centroid.labels"
-  new.partition <- match(partition.in.colors, centroid.labels)
-  names(new.partition) <- centroid.labels[new.partition]
-  partitions[[1]] <- new.partition
+  #new.partition <- match(partition.in.colors, centroid.labels)
+  #names(new.partition) <- centroid.labels[new.partition]
+  partitions[[1]] = clusters
 
   #kmeans.evolution <- list()
   #kIMs <- getkIMs(tom.matrix,new.partition,length(centroid.labels))
@@ -923,32 +924,30 @@ applyKMeans <- function(tissue,
   while(exchanged.genes > min.exchanged.genes & iteration <= n.iterations){
     cat("k-means iteration:",iteration,"and",(n.iterations - iteration),"iterations left\n")
 
-    new.partition <- apply(expr.data,MARGIN=2,
-                           getBestModuleCor,
-                           centroids=centroids,
-                           signed=(net.type == "signed"),
-                           cor.type="pearson")
+    new.clusters <- apply(expr.data,MARGIN=2,
+                          getBestModuleCor,
+                          centroids=centroids,
+                          signed=(net.type == "signed"),
+                          cor.type="pearson")
+    print(table(new.clusters))
+    new.clusters = colnames(centroids)[new.clusters]
+    print(table(new.clusters))
 
-    print(unlist(new.partition))
-    print(unique(unlist(new.partition)))
-
-    cat("We got",length(new.partition),"genes in partition\n")
-    cat("We got",length(unique(new.partition)),"modules in partition\n")
-    print(new.partition)
-    partitions[[iteration + 1]] <- new.partition
+    cat("We got",length(new.clusters),"genes in partition\n")
+    cat("We got",length(unique(new.clusters)),"modules in partition\n")
+    #print(unique(new.clusters))
+    partitions[[iteration + 1]] <- new.clusters
     #Get the control values for the new partition
     exchanged.genes <- length(getExchangedGenes(partitions[[iteration]],
                                                 partitions[[iteration + 1]]))
     cat(exchanged.genes,
         "genes moved to another module by k-means\n")
-    new.partition.in.colors <- WGCNA::labels2colors(unlist(new.partition))
-    names(new.partition.in.colors) = names(unlist(new.partition))
-    print(table(new.partition.in.colors))
-    cat("We got",length(unique(new.partition.in.colors)),"modules in partition\n")
+    #cat("We got",length(unique(new.partition.in.colors)),"modules in partition\n")
     cat("We have",ncol(expr.data),"genes in expr.data\n")
-    cat("We have",length(new.partition.in.colors),"genes in partition\n")
+    #cat("We have",length(new.partition.in.colors),"genes in partition\n")
+    centroids <- getNewCentroids(expr.data,new.clusters)
+    cat("We got",ncol(centroids),"new centroids\n")
 
-    centroids <- getNewCentroids(expr.data,new.partition.in.colors,centroid.labels)
 
     iteration = iteration + 1
     allgchanges = c(allgchanges,exchanged.genes)
@@ -959,76 +958,27 @@ applyKMeans <- function(tissue,
 
   print("The algorithm finished correctly")
   net = NULL
-  net$net = genNetFromPartition(expr.data.file=expr.data,
-                                excludeGrey=excludeGrey,
-                                partitions.file=partitions,
-                                index=-1)
+  net$moduleColors = new.clusters
+  net$MEs = WGCNA::moduleEigengenes(expr.data,
+                                    net$moduleColors,
+                                    excludeGrey=excludeGrey)$eigengenes
+
   net$partitions = partitions
   net$cgenes = allgchanges
   return(net)
 }
 
-getNewCentroids <- function(expr.data,partition.in.colors,centroid.labels){
+getNewCentroids <- function(expr.data,partition.in.colors){
   eg.vectors = WGCNA::moduleEigengenes(expr.data,
-                                       partition.in.colors,excludeGrey=F)$eigengenes
+                                       partition.in.colors,
+                                       excludeGrey=F)$eigengenes
 
   names(eg.vectors) <- substring(names(eg.vectors),3)
-  eg.vectors <- eg.vectors[,centroid.labels]
+  #eg.vectors <- eg.vectors[,centroid.labels]
   return(eg.vectors)
 }
 
 
-genNetFromPartition = function(expr.data.file,
-                               partitions.file,
-                               excludeGrey=F,
-                               index=-1){
-
-  if(typeof(partitions.file) == "character")
-    parts = readRDS(partitions.file)
-  else
-    parts = partitions.file
-
-  if(index < 0)
-    index = length(parts)
-
-  colors = unique(names(parts[[1]]))
-  col.number = unique(parts[[1]])
-
-  if(typeof(expr.data.file) == "character")
-    expr.data = readRDS(expr.data.file)
-  else
-    expr.data = expr.data.file
-
-  #if(typeof(net.file) == "character")
-  #	net = readRDS(net.file)
-  #else
-  #	net = net.file
-  new.net <- NULL
-  if(index == 1){
-    new.net$moduleLabels = parts[[index]]
-    new.net$moduleColors = names(parts[[index]])
-    names(new.net$moduleColors) = colnames(expr.data)
-    names(new.net$moduleLabels) = colnames(expr.data)
-
-  }else{
-    new.net$moduleLabels = parts[[index]]
-    new.net$moduleColors = colors[match(parts[[index]],col.number)]
-    names(new.net$moduleColors) = colnames(expr.data)
-    names(new.net$moduleLabels) = colnames(expr.data)
-
-  }
-
-  #If there are some grey genes as NA, add them again
-  new.net$moduleColors[is.na(new.net$moduleColors)] = "grey"
-
-  #¢if(sum(new.net$moduleColors == "grey") >= k.means.min.genes.to.consider.grey)
-  #  new.net$MEs  = WGCNA::moduleEigengenes(expr.data,new.net$moduleColors,softPower=beta, excludeGrey=F)$eigengenes
-  #else
-  new.net$MEs  = WGCNA::moduleEigengenes(expr.data,
-                                         new.net$moduleColors,
-                                         excludeGrey=excludeGrey)$eigengenes
-  return(new.net)
-}
 
 getBestModuleCor = function(gene,centroids,signed=TRUE,cor.type){
 
@@ -1040,6 +990,7 @@ createCentroidMatrix <- function(eigengenes){
   for(eigengene in eigengenes){
     my.matrix <- cbind(my.matrix,eigengene)
   }
+  colnames(my.matrix) = substring(names(eigengenes),3)
   return(my.matrix)
 }
 
