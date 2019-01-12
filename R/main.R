@@ -924,11 +924,11 @@ applyKMeans <- function(tissue,
   while(exchanged.genes > min.exchanged.genes & iteration <= n.iterations){
     cat("k-means iteration:",iteration,"and",(n.iterations - iteration),"iterations left\n")
 
-    new.clusters <- apply(expr.data,MARGIN=2,
+    new.clusters <- unlist(apply(expr.data,2,
                           getBestModuleCor,
                           centroids=centroids,
                           signed=(net.type == "signed"),
-                          cor.type="pearson")
+                          cor.type="pearson"))
     print(table(new.clusters))
     new.clusters = colnames(centroids)[new.clusters]
     print(table(new.clusters))
