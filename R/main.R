@@ -788,7 +788,12 @@ generateBetaStudy <- function(expr.data,powers=c(1:30),title=NULL,plot.file=NULL
   sft
 }
 
-#' Title
+#' Title K-means refinement process after getting TOM and clusters from `WGCNA`
+#' This method applies `n.iterations` k-means iterations to the hierarchical clustering
+#' generated partition from `WGCNA`. It uses the eigengenes as centroids and the distance
+#' between gene pairs is calculated on the basis of whether the network is signed or not.
+#' For details on the approach see paper
+#' <https://bmcsystbiol.biomedcentral.com/articles/10.1186/s12918-017-0420-6>
 #'
 #' @param tissue
 #' @param create.tom
@@ -928,11 +933,24 @@ applyKMeans <- function(tissue,
     print(sum(is.na(centroids)))
     print(sum(is.na(expr.data)))
 
-    new.clusters <- unlist(apply(expr.data,2,
-                                 getBestModuleCor,
-                                 centroids=centroids,
-                                 signed=(net.type == "signed"),
-                                 cor.type="pearson"))
+    new.clusters = NULL
+    for(i in 1:ncol(expr.data)){
+      newc = getBestModuleCor(gene=expr.data[,i],centroids,signed=(net.type == "signed"),
+                       cor.type="pearson")
+      if(length(newc) == 0 | is.null(newc)){
+        cat("Gene",colnames(expr.data)[i],"\n")
+        print(expr.data[,i])
+        print(newc)
+        stop("Error aqui")
+      }
+      new.clusters = c(new.clusters,newc)
+
+    }
+    #new.clusters <- unlist(apply(expr.data,2,
+    #                             getBestModuleCor,
+    #                             centroids=centroids,
+    #                             signed=(net.type == "signed"),
+    #                             cor.type="pearson"))
     print(sum(is.na(expr.data)))
 
     print(table(new.clusters))
@@ -1460,6 +1478,20 @@ trasposeDataFrame = function(file.in,first.c.is.name=F){
   return(data.t)
 }
 
+#' Title Managing big TOM matrices
+#' This function allows saving a bit TOM matrix aquared matrix, keeping only those
+#' cells referring to genes clustering together in the same module
+#'
+#' @param tom The TOM matrix itself
+#' @param clusters A vector with the labels (in the same order as in the expression data)
+#' showing how genes cluster together
+#' @param filepref This full path including file prefix will be used for the TOM files to
+#' be saved
+#'
+#' @return No value returned
+#' @export
+#'
+#' @examples
 saveTOM = function(tom, clusters, filepref){
   modules = unique(clusters)
   metadata = NULL
@@ -1472,6 +1504,15 @@ saveTOM = function(tom, clusters, filepref){
   saveRDS(metadata,paste0(filepref,"_metadata.rds"))
 }
 
+#' Title Managing big TOM matrices
+#'
+#' @param filepref The prefix we used to previously save the matrix
+#'
+#' @return A squared TOM matrix disposed in the same order as genes in the
+#' expression data matrix
+#' @export
+#'
+#' @examples
 readTOM = function(filepref){
   mdfile = paste0(filepref,"_metadata.rds")
   if(!file.exists(mdfile))
@@ -1491,6 +1532,14 @@ readTOM = function(filepref){
   return(tom)
 }
 
+#' Title Managing big TOM matrices
+#'
+#' @param filepref
+#'
+#' @return
+#' @export
+#'
+#' @examples
 removeTOM = function(filepref){
   mdfile = paste0(filepref,"_metadata.rds")
   if(!file.exists(mdfile))
