@@ -249,6 +249,7 @@ postCluster = function(handlers,
   time = Sys.time()
   ngenes = ncol(expr.data)
   genes = colnames(expr.data)
+
   TOM = matrix(nrow = ngenes,ncol=ngenes)
   TOM[] = 0
   allsubnets = NULL
@@ -333,6 +334,10 @@ postCluster = function(handlers,
             localnet = NULL
             localnet$moduleColors = CoExpNets::dropGreyModule(WGCNA::labels2colors(dynamicMods))
             print(table(localnet$moduleColors))
+
+            validgenes = unlist(apply(expr.data,2,function(x){
+              return(var(x) != 0)
+            }))
 
             outnet = CoExpNets::applyKMeans(tissue=tissue,
                                             n.iterations=n.iterations,
@@ -454,6 +459,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
   }else stop(paste0("Mode",mode,"unknown\n"))
 
   ngenes = ncol(expr.data)
+  genes = colnames(expr.data)
   TOM = matrix(nrow = ngenes,ncol=ngenes)
   TOM[] = 0
   count = 0
@@ -498,7 +504,12 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
 
     }
     if(!is.null(net$discGenes)){
+      print(net$discGenes)
+      print(genes)
       mask = !(genes %in% net$discGenes)
+      print(sum(mask))
+      print(str(TOM))
+      print(str(localTOM))
       TOM[mask,mask] = TOM[mask,mask] + localTOM
     }else
       TOM = TOM + localTOM
@@ -528,10 +539,10 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
       #This will print the same, but using as label for modules the corresponding colors
       localnet = NULL
       localnet$moduleColors = CoExpNets::dropGreyModule(WGCNA::labels2colors(dynamicMods))
-      outnet = applyKMeans(tissue=tissue,
-                           n.iterations=n.iterations,
-                           net.file=localnet,
-                           expr.data=expr.data)
+      outnet = CoExpNets::applyKMeans(tissue=tissue,
+                                      n.iterations=n.iterations,
+                                      net.file=localnet,
+                                      expr.data=expr.data)
 
       net$subcluster = outnet$moduleColors
 
@@ -555,10 +566,10 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
   finalnet$moduleColors = outnet$moduleColors
   finalnet$subnets = allsubnets
 
-  outnet = applyKMeans(tissue=tissue,
-                       n.iterations=n.iterations,
-                       net.file=finalnet,
-                       expr.data=expr.data)
+  outnet = CoExpNets::applyKMeans(tissue=tissue,
+                                  n.iterations=n.iterations,
+                                  net.file=finalnet,
+                                  expr.data=expr.data)
   finalnet$moduleColors = outnet$moduleColors
   finalnet$MEs = outnet$MEs
   finalnet$mode = mode
@@ -630,7 +641,6 @@ getDownstreamNetwork = function(tissue="mytissue",
   centroid.type="pca"
   cor.type="pearson"
 
-
   if(debug){
     if(typeof(expr.data) == "character")
       expr.data = readRDS(expr.data)
@@ -671,7 +681,7 @@ getDownstreamNetwork = function(tissue="mytissue",
   if(save.tom){
     if(blockTOM)
       saveTOM(tom=net.and.tom$tom,
-              clusters=outnet$net$moduleColors,
+              clusters=outnet$moduleColors,
               filepref=paste0(final.net,".tom."))
     else
       saveRDS(net.and.tom$tom,paste0(final.net,".tom.rds"))
@@ -951,13 +961,13 @@ applyKMeans <- function(tissue,
   exchanged.genes = min.exchanged.genes + 1
   iteration = 1
 
+  new.clusters = NULL
   while(exchanged.genes > min.exchanged.genes & iteration <= n.iterations){
     cat("k-means iteration:",iteration,"and",(n.iterations - iteration),"iterations left\n")
-    print(corDistance)
-    print(centroids)
-    print(sum(is.na(centroids)))
-    print(sum(is.na(expr.data)))
-
+    #print(corDistance)
+    #print(centroids)
+    #print(sum(is.na(centroids)))
+    #print(sum(is.na(expr.data)))
     new.clusters = NULL
     for(i in 1:ncol(expr.data)){
       newc = getBestModuleCor(gene=expr.data[,i],centroids,signed=(net.type == "signed"),
@@ -966,7 +976,7 @@ applyKMeans <- function(tissue,
         cat("Gene",colnames(expr.data)[i],"\n")
         print(expr.data[,i])
         print(newc)
-        stop("Error aqui")
+        stop("Something wrong in the data")
       }
       new.clusters = c(new.clusters,newc)
 
@@ -980,7 +990,7 @@ applyKMeans <- function(tissue,
 
     print(table(new.clusters))
     new.clusters = colnames(centroids)[new.clusters]
-    print(table(new.clusters))
+    #print(table(new.clusters))
 
     cat("We got",length(new.clusters),"genes in partition\n")
     cat("We got",length(unique(new.clusters)),"modules in partition\n")
@@ -1003,17 +1013,20 @@ applyKMeans <- function(tissue,
   }
 
   cat("We finish with",(iteration-1),"iterations\n")
-  cat("Last number of gene changes where",exchanged.genes,"\n")
-  #saveRDS(partitions,partitions.file)
+  if(iteration > 1){
+    cat("Last number of gene changes where",exchanged.genes,"\n")
+    #saveRDS(partitions,partitions.file)
 
-  net = NULL
-  net$moduleColors = new.clusters
-  net$MEs = WGCNA::moduleEigengenes(expr.data,
-                                    net$moduleColors,
-                                    excludeGrey=excludeGrey)$eigengenes
+    net = NULL
+    net$moduleColors = new.clusters
+    net$MEs = WGCNA::moduleEigengenes(expr.data,
+                                      net$moduleColors,
+                                      excludeGrey=excludeGrey)$eigengenes
 
-  net$partitions = partitions
-  net$cgenes = allgchanges
+    net$partitions = partitions
+    net$cgenes = allgchanges
+  }
+
   print("The k-means algorithm finished correctly")
   return(net)
 }
