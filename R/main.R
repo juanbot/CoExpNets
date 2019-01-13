@@ -616,12 +616,22 @@ getDownstreamNetwork = function(tissue="mytissue",
   centroid.type="pca"
   cor.type="pearson"
 
+
   if(debug){
     if(typeof(expr.data) == "character")
       expr.data = readRDS(expr.data)
     expr.data = expr.data[,1:1500]
     n.iterations=5
   }
+
+  discarded = unlist(apply(expr.data,2,function(x){
+    return(var(x) != 0)
+  }))
+  if(sum(discarded) < ncol(expr.data))
+    cat("There are genes with 0 variance:",
+        paste0(colnames(expr.data)[discarded],collapse=","),"\n")
+  discGenes = colnames(expr.data)[discarded]
+  expr.data = expr.data[,discarded]
 
   net.and.tom = getAndPlotNetworkLong(expr.data=expr.data,
                                       beta=beta,
@@ -659,6 +669,7 @@ getDownstreamNetwork = function(tissue="mytissue",
   foutnet$net = outnet$net
   foutnet$partitions = outnet$partitions
   foutnet$cgenes = outnet$cgenes
+  foutnet$discgenes = discGenes
 
   if(save.tom){
     if(blockTOM)
@@ -936,7 +947,7 @@ applyKMeans <- function(tissue,
     new.clusters = NULL
     for(i in 1:ncol(expr.data)){
       newc = getBestModuleCor(gene=expr.data[,i],centroids,signed=(net.type == "signed"),
-                       cor.type="pearson")
+                              cor.type="pearson")
       if(length(newc) == 0 | is.null(newc)){
         cat("Gene",colnames(expr.data)[i],"\n")
         print(expr.data[,i])
