@@ -339,7 +339,7 @@ postCluster = function(handlers,
                                             net.file=localnet,
                                             expr.data=expr.data)
 
-            net$subcluster = outnet$net$moduleColors
+            net$subcluster = outnet$moduleColors
 
           }
           #net$indexes = indexes[tomCount,]
@@ -356,7 +356,9 @@ postCluster = function(handlers,
 
   if(length(allsubnets) > 0){
     finalnet$beta = as.integer(mean(unlist(lapply(allsubnets,function(x){return(x$beta)}))))
-    finalnet$file = paste0(job.path,"/netBoot",tissue,".",finalnet$beta,".it.",n.iterations,".b.",nrow(indexes),".rds")
+    finalnet$file = paste0(job.path,"/netBoot",tissue,".",
+                           finalnet$beta,".it.",n.iterations,
+                           ".b.",nrow(indexes),".rds")
 
     TOM = TOM/tomCount
     adjacency = apply(TOM,2,sum)
@@ -364,7 +366,7 @@ postCluster = function(handlers,
     names(adjacency) = colnames(expr.data)
     if(blockTOM){
       finalnet$tom = paste0(finalnet$file,".tom.")
-      CoExpNets::saveTOM(TOM,outnet$net$moduleColors,finalnet$tom)
+      CoExpNets::saveTOM(TOM,outnet$moduleColors,finalnet$tom)
     }else{
       finalnet$tom = paste0(finalnet$file,".tom.rds")
       saveRDS(TOM,finalnet$tom)
@@ -372,7 +374,7 @@ postCluster = function(handlers,
 
 
     finalnet$adjacency = adjacency
-    finalnet$moduleColors = outnet$net$moduleColors
+    finalnet$moduleColors = outnet$moduleColors
     finalnet$subnets = allsubnets
     finalnet$mode = mode
     rm("TOM")
@@ -380,8 +382,8 @@ postCluster = function(handlers,
                                     n.iterations=n.iterations,
                                     net.file=finalnet,
                                     expr.data=expr.data)
-    finalnet$moduleColors = outnet$net$moduleColors
-    finalnet$MEs = outnet$net$MEs
+    finalnet$moduleColors = outnet$moduleColors
+    finalnet$MEs = outnet$MEs
     finalnet$cgenes = outnet$cgenes
     finalnet$partitions = outnet$partitions
   }
@@ -404,8 +406,6 @@ postCluster = function(handlers,
     saveRDS(finalnet,finalnet$file)
     return(finalnet$file)
   }
-
-  return(NULL)
 }
 
 
@@ -533,7 +533,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
                            net.file=localnet,
                            expr.data=expr.data)
 
-      net$subcluster = outnet$net$moduleColors
+      net$subcluster = outnet$moduleColors
 
     }
     net$indexes = indexes[i,]
@@ -552,15 +552,15 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
   names(adjacency) = colnames(expr.data)
   saveRDS(TOM,finalnet$tom)
   finalnet$adjacency = adjacency
-  finalnet$moduleColors = outnet$net$moduleColors
+  finalnet$moduleColors = outnet$moduleColors
   finalnet$subnets = allsubnets
 
   outnet = applyKMeans(tissue=tissue,
                        n.iterations=n.iterations,
                        net.file=finalnet,
                        expr.data=expr.data)
-  finalnet$moduleColors = outnet$net$moduleColors
-  finalnet$MEs = outnet$net$MEs
+  finalnet$moduleColors = outnet$moduleColors
+  finalnet$MEs = outnet$MEs
   finalnet$mode = mode
   finalnet$cgenes = outnet$cgenes
   finalnet$partitions = outnet$partitions
@@ -683,7 +683,7 @@ getDownstreamNetwork = function(tissue="mytissue",
   foutnet$net = outnet$net
   foutnet$partitions = outnet$partitions
   foutnet$cgenes = outnet$cgenes
-  foutnet$discgenes = discGenes
+  foutnet$discGenes = discGenes
 
   if(save.tom){
     if(blockTOM)
