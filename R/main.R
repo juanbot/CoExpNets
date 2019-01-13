@@ -248,6 +248,7 @@ postCluster = function(handlers,
 
   time = Sys.time()
   ngenes = ncol(expr.data)
+  genes = colnames(expr.data)
   TOM = matrix(nrow = ngenes,ncol=ngenes)
   TOM[] = 0
   allsubnets = NULL
@@ -285,21 +286,26 @@ postCluster = function(handlers,
           cat("Accumulating TOM",net$tom,"\n")
           if(blockTOM){
             cat("Reading TOM\n")
-            TOM = TOM + CoExpNets::readTOM(net$tom)
+            localTOM = CoExpNets::readTOM(net$tom)
             CoExpNets::removeTOM(net$tom)
-            print("Done")
           }else{
-            cat("Reading TOM\n")
-            TOM = TOM + readTOM(net$tom)
-            cat("Quantile normalization\n")
-            tom = preprocessCore::normalize.quantiles(tom)
-            print("Adding TOM")
-            TOM = TOM + tom
-            print("Done")
-            rm("tom")
+            localTOM = readRDS(net$tom)
             if(removeTOM)
               file.remove(net$tom)
+            cat("Quantile normalization\n")
+            localTOM = preprocessCore::normalize.quantiles(localTOM)
+            print("Done")
+
           }
+          if(!is.null(net$discGenes)){
+            mask = !(genes %in% net$discGenes)
+            TOM[mask,mask] = TOM[mask,mask] + localTOM
+          }else
+            TOM = TOM + localTOM
+
+          rm("localTOM")
+          print("Done")
+
 
           tomCount = tomCount + 1
           #file.remove(net$net)
@@ -478,20 +484,28 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
                                save.tom=T,...)
 
     cat("Accumulating TOM",net$tom,"\n")
-    cat("Reading TOM\n")
-    if(!blockTOM){
-      tom = readRDS(net$tom)
-      file.remove(net$tom)
-      cat("Quantile normalization\n")
-      tom = preprocessCore::normalize.quantiles(tom)
+    if(blockTOM){
+      cat("Reading TOM\n")
+      localTOM = CoExpNets::readTOM(net$tom)
+      CoExpNets::removeTOM(net$tom)
     }else{
-      tom = readTOM(net$tom)
-      removeTOM(net$tom)
+      localTOM = readRDS(net$tom)
+      if(removeTOM)
+        file.remove(net$tom)
+      cat("Quantile normalization\n")
+      localTOM = preprocessCore::normalize.quantiles(localTOM)
+      print("Done")
+
     }
-    cat("Adding TOM\n")
-    TOM = TOM + tom
-    cat("Done\n")
-    rm("tom")
+    if(!is.null(net$discGenes)){
+      mask = !(genes %in% net$discGenes)
+      TOM[mask,mask] = TOM[mask,mask] + localTOM
+    }else
+      TOM = TOM + localTOM
+
+    rm("localTOM")
+    print("Done")
+
     if(count %% each == 0 | count == nrow(indexes)){
       dissTOM = 1 - TOM/count
       geneTree = flashClust::flashClust(as.dist(dissTOM), method = "average")
@@ -624,14 +638,14 @@ getDownstreamNetwork = function(tissue="mytissue",
     n.iterations=5
   }
 
-  discarded = unlist(apply(expr.data,2,function(x){
+  validgenes = unlist(apply(expr.data,2,function(x){
     return(var(x) != 0)
   }))
-  if(sum(discarded) < ncol(expr.data))
+  if(sum(validgenes) < ncol(expr.data))
     cat("There are genes with 0 variance:",
-        paste0(colnames(expr.data)[discarded],collapse=","),"\n")
-  discGenes = colnames(expr.data)[discarded]
-  expr.data = expr.data[,discarded]
+        paste0(colnames(expr.data)[!validgenes],collapse=","),"\n")
+  discGenes = colnames(expr.data)[!validgenes]
+  expr.data = expr.data[,validgenes]
 
   net.and.tom = getAndPlotNetworkLong(expr.data=expr.data,
                                       beta=beta,
@@ -1525,6 +1539,25 @@ saveTOM = function(tom, clusters, filepref){
 #'
 #' @examples
 readTOM = function(filepref){
+  mdfile = paste0(filepref,"_metadata.rds")
+  if(!file.exists(mdfile))
+    stop(paste0("Error: metadata file",mdfile," not found"))
+
+  metadata = readRDS(mdfile)
+  modules = names(metadata)
+  size = length(metadata[[modules[1]]]$mask)
+  tom = matrix(ncol=size,nrow=size)
+  tom[] = 0
+  for(module in modules){
+    cat("Reading module",module,"\n")
+    smalltom = readRDS(metadata[[module]]$tomname)
+    mask = metadata[[module]]$mask
+    tom[mask,mask] = smalltom
+  }
+  return(tom)
+}
+
+incrementTOM = function(filepref){
   mdfile = paste0(filepref,"_metadata.rds")
   if(!file.exists(mdfile))
     stop(paste0("Error: metadata file",mdfile," not found"))
