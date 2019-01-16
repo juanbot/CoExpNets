@@ -526,7 +526,7 @@ getGOFromTissues = function(tissues,which.ones,modules){
 
 
 getGOFromTissue = function(tissue="SNIG",which.one="rnaseq",module=NULL){
-  gofile = coexp.nets$go[findNet(which.one,tissue)]
+  gofile = findGO(which.one,tissue)
   if(length(gofile)){
       go = read.csv(gofile,stringsAsFactors=F)
       if(!is.null(module))
@@ -541,20 +541,12 @@ getGOFromTissue = function(tissue="SNIG",which.one="rnaseq",module=NULL){
 
 getCellTypeFromTissue = function(tissue="SNIG",which.one="rnaseq",module=NULL){
 
-  ctfile = coexp.nets$ctype[findNet(which.one,tissue)]
+  ctfile = findCT(which.one,tissue)
   if(length(ctfile)){
       ct = data.frame(read.csv(ctfile,stringsAsFactors=F))
       if(!is.null(module)){
-        if(which.one == "micro19K"){
-          ct = ct[ct$InputCategories == module,]
-          ctvec = ct[,4]
-          names(ctvec) = ct[,2]
-
-        }else{
           ctvec = ct[,module]
           names(ctvec) = ct[,1]
-
-        }
         return(ctvec)
       }
 
