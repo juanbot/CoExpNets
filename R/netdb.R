@@ -491,7 +491,7 @@ getExprDataFromTissue = function(tissue="SNIG",which.one="rnaseq",only.file=F){
   file = findData(which.one,tissue)
   if(only.file)
     return(file)
-  return(readRDS(file)
+  return(readRDS(file))
 }
 
 getModulesFromTissue = function(tissue="SNIG",which.one="rnaseq",in.cluster=F){
