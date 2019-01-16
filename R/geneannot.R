@@ -74,6 +74,7 @@ reportOnGenes = function(tissue,
                          ens.correction=NULL,
                          gwases=NULL){
 
+  genes = unique(genes)
   #Everything will be turned into Ensembl
   net = getNetworkFromTissue(tissue=tissue,which.one=which.one)
   names(net$moduleColors) =  fromAny2Ensembl(names(net$moduleColors))
@@ -82,6 +83,7 @@ reportOnGenes = function(tissue,
   print(head(colnames(expr.data)))
   colnames(expr.data) = fromAny2Ensembl(colnames(expr.data))
   en.genes = fromAny2Ensembl(genes)
+  gene.names = fromAny2GeneName(genes)
   print(en.genes)
   if(!is.null(ens.correction)){
     for(i in seq(from=1,to=length(ens.correction),by=2)){
@@ -99,6 +101,7 @@ reportOnGenes = function(tissue,
               expr.data.file=expr.data,
               tissue=tissue,
               genes=en.genes)
+  modules = na.omit(unique(getModuleFromGenes(which.one=which.one,tissue=tissue,genes=en.genes)))
 
   for(en.gene in en.genes){
     gene = en.gene
@@ -111,12 +114,9 @@ reportOnGenes = function(tissue,
                               which.one=which.one,
                               include.pd=include.pd)
       mm = mms[names(mms) == en.gene]
-
-
-      gene = fromAny2GeneName(gene)
-      ensgene = en.gene
+      gene = gene.names[en.genes == en.gene]
       report = c(gene = gene,
-                 ensgene = ensgene,
+                 ensgene = en.gene,
                  mm = signif(as.numeric(mm),4),
                  report)
 

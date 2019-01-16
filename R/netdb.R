@@ -77,7 +77,7 @@ addNetworkToDDBB = function(netf,folder,
 
 getNetworkCategories = function(){
   if(!is.null(coexp.nets))
-    return(coexp.nets$which.one)
+    return(unique(coexp.nets$which.one))
   return(NULL)
 }
 
