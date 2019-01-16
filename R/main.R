@@ -570,6 +570,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
                                   n.iterations=n.iterations,
                                   net.file=finalnet,
                                   expr.data=expr.data)
+
   finalnet$moduleColors = outnet$moduleColors
   finalnet$MEs = outnet$MEs
   finalnet$mode = mode
@@ -1337,22 +1338,25 @@ getMM = function(net=NULL,
                  silent=F,keep.grey=F,
                  alt.gene.index=NULL){
 
-  net = getNetworkFromTissue(tissue,which.one)
+  if(is.null(net))
+    net = getNetworkFromTissue(tissue,which.one)
   if(is.null(expr.data.file))
-    expr.data = getExprDataFromTissue(tissue,which.one)
-  else
-    expr.data = readRDS(expr.data.file)
+    expr.data = getExprDataFromTissue(tissue=tissue,which.one=which.one,only.file = F)
+  else{
+    if(typeof(expr.data.file) == "character")
+      expr.data = readRDS(expr.data.file)
+    else
+      expr.data = expr.data.file
+  }
+
+
+  colnames(expr.data) = fromAny2Ensembl(colnames(expr.data))
+  names(net$moduleColors) = fromAny2Ensembl(names(net$moduleColors))
 
   if(is.null(expr.data)){
     cat("There is no expr.data file registered for category", which.one,"and tissue",tissue,"\n")
     return(expr.data)
   }
-
-
-  if(which.one == "micro19K"){
-    names(net$moduleColors) = colnames(expr.data)
-  }
-
 
   mm = NULL
 

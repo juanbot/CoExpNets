@@ -7,6 +7,10 @@ fromAny2Ensembl = function(genes){
   }else if(substr(genes[1],1,4) != "ENSG"){
     return(fromGeneName2Ensembl(genes))
   }
+
+  #Still one possibility, does it have versions?
+  genes = gsub("\\.[0-9]+","",genes)
+
   return(genes)
 }
 

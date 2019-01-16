@@ -82,7 +82,42 @@ getNetworkCategories = function(){
 }
 
 findNet = function(which.one,tissue){
-  return(which(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one))
+  dir = system.file("", "extdata", package = which.one)
+  net = coexp.nets$net[which(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one)]
+  if(length(net) > 0)
+    return(paste0(dir,"/",net))
+  return(NULL)
+}
+
+findCT = function(which.one,tissue){
+  file = paste0(findNet(which.one=which.one,tissue=tissue),".celltype.csv")
+  if(file.exists(file))
+    return(file)
+  return(NULL)
+}
+
+findUserCT = function(which.one,tissue){
+  file = paste0(findNet(which.one=which.one,tissue=tissue),".USER_terms.csv")
+  if(file.exists(file))
+    return(file)
+  return(NULL)
+}
+
+findGO = function(which.one,tissue){
+  file = paste0(findNet(which.one=which.one,tissue=tissue),"_gprofiler.csv")
+  if(file.exists(file))
+    return(file)
+  file = paste0(findNet(which.one=which.one,tissue=tissue),"_gprof.csv")
+  if(file.exists(file))
+    return(file)
+
+
+  return(NULL)
+}
+
+findData = function(which.one,tissue){
+  dataset = coexp.nets$data[which(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one)]
+  return(dataset) #return(NULL)
 }
 
 saveDDBB = function(fileout){
@@ -361,7 +396,11 @@ getInfoFromTissue = function(which.one,tissue,what,...){
 #' @export
 #'
 #' @examples
-getNetworkFromTissue = function(tissue="SNIG",which.one="exonic",only.file=F,genes=NULL,modules){
+getNetworkFromTissue = function(tissue="SNIG",
+                                which.one="exonic",
+                                only.file=F,
+                                genes=NULL,
+                                modules){
 
   if(which.one == "new"){
     cat("New network, reading from",tissue,"\n")
@@ -378,15 +417,13 @@ getNetworkFromTissue = function(tissue="SNIG",which.one="exonic",only.file=F,gen
     return(net)
   }
 
-  file = coexp.nets$net[findNet(which.one,tissue)]
+  file = findNet(which.one,tissue)
+  if(is.null(file))
+    return(NULL)
+  cat("Reading from",file,"\n")
   if(only.file)
     return(file)
-  else{
-    if(file.exists(file))
-      return(readRDS(file))
-  }
-  return(NULL)
-
+  else return(readRDS(file))
   cat(paste0("When getting the network for tissue ",tissue," we don't know ",which.one,"\nReturning NULL\n"))
   return(NULL)
 }
@@ -451,28 +488,10 @@ getExprDataFromTissue = function(tissue="SNIG",which.one="rnaseq",only.file=F){
       return(tissue)
     return(readRDS(tissue))
   }
-
-  file = coexp.nets$data[findNet(which.one,tissue)]
-  if(length(file)){
-    if(only.file)
-      return(file)
-    else{
-      if(file.exists(file)){
-        if(which.one == "rosmap"){
-          expr.data = data.frame(readRDS(file))
-          colnames(expr.data) = gsub("\\.[0-9]+","",colnames(expr.data))
-          return(expr.data)
-        }
-        return(readRDS(file))
-      }
-
-    }
-    return(NULL)
-
-  }
-
-  cat(paste0("When getting the expression data for tissue ",tissue," we don't know ",which.one,"\nReturning NULL\n"))
-  return(NULL)
+  file = findData(which.one,tissue)
+  if(only.file)
+    return(file)
+  return(readRDS(file)
 }
 
 getModulesFromTissue = function(tissue="SNIG",which.one="rnaseq",in.cluster=F){
