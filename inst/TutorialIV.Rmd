@@ -1,0 +1,100 @@
+---
+title: "Tutorial IV"
+author: "Juan A. Botía"
+date: "03/07/2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction to randomization based enrichment
+
+In this part of the co-exp distribution we will explain how to incorporate a GWAS full summary statistics into the network so as to annotate the modules for significant enrichment of GWAS signals. This can be very useful for explaining what are the most relevant pathways found in the GWAS results through the use of specific co-expression networks, e.g. networks of the basal ganglia in a Parkinson's GWAS.
+
+In randomization, we want to test whether a z-score is significantly departing from the null distribution of z-scores. Let us suppose we have a GWAS study's results. We process this GWAS to a gene-level association analysis software (e.g. VEGAS, MAGMA, PrediXcan or any other) and we keep from those only the pairs $(gene,P)$ where $P$ is the p-value for the associatio of the gene to the trait analyzed in the GWAS. Let us suppose now that we have a clustering of genes, coming from one of our co-expression networks, with modules $\{m_1,...,m_n\}$. If we wanted to test whether the genes in a module $m_i$ are enriched for GWAS signals, we obtain an observed z-score based on $$z_i=\frac{\sum\limits_{j=1}^{n} -log_{10}(P_j) - \overline{x}}{sd(-log_{10}(P))},$$ where $\overline{x}$ is the mean of all the $-log_{10}P$ for all P in the GWAS study, and $sd$ its standard deviation. Then, we repeat a few thousand times the following: we randomly select a groun of genes from all the GWAS gene association study result, with the same size of the module $m_i$ tested, and obtain a z-score. So we create a random null distribution of z-scores. Finally, the empirical p-value for the association of $m_i$ and the GWAS is the fraction of null z-scores which are greater than the observed z-score.
+
+We implemenent this procedure in co-exp so you can easily do this analysis as follows.
+
+## Using co-exp to annotate a network with GWAS results
+
+We will use the ROS/MAP network for cased of AD, if we use cognitive decline as the variable.
+```{r}
+source("coexpression.R")
+source("rndnets.R")
+coexp.initDb("Nofull")
+coexp.nets
+```
+
+As we see, we have four ROS/MAP networks. We will use the "cogdxad" network for that. We will input, as an example, the VEGAS results on the full summary statistics from the GWAS on Parkinson's Disease published in 2014. As a way of example, the file can be accessed in the co-exp distribution. 
+```{r}
+vegas = read.delim("data/pdgwas2014VEGASresults.txt",sep=" ",stringsAsFactors=F)
+str(vegas)
+```
+
+
+We will use the Gene and the Pvalue columns, 2nd and 8th column respectively. Now we use the method
+```{r}
+result = coexp.networkRandAnnotation(tissues="cogdxad",which.one="rosmap",
+                            file.in="data/pdgwas2014VEGASresults.txt",
+                            out.path="~/tmp/",
+                            single.file=T,
+                            scoreispvalue =T,
+                            n=10000,
+                            genecolumn=2,
+                            scorecolumn=8,
+                            moreannotations=F)
+```
+
+
+Let's have a look at the results
+```{r}
+head(result[order(result$pvalue),])
+```
+
+As we ordered by pvalue, we see that there might be some significant signals at green and salmon, but if we consider multiple testing factor we should correct, e.g. Benjamini and Hojckerberg, as follows
+
+```{r}
+resultc = cbind(result,bonfcorrected=p.adjust(result$pvalue,method = "BH"))
+resultc[order(resultc$pvalue),c("module","pvalue","bonfcorrected")]
+```
+
+
+And we have a signal in the green module. 
+
+```{r}
+coexp.reportOnModule(module="green",which.one="rosmap",tissue="cogdxad")
+```
+
+And we can see is a module devoted to synaptic transmission, has the SNCA gene, one of the key genes in Alzheimer's and PD and is neuronal.
+
+Note that, as the p-value is empirical, its lowest value will be $n^-1$ where $n$ is the number of iterations done in the randomization algorithm. 
+Thus, if we want p-values to survive multiple testing, we don't advise using a value of n under $10^5$. If we wanted to study a signal in detail, there is a lot of information produced in the analysis. There is no doubt the green signal will be significant but the salmon module almost gets it too. We may try more simulations but we can also have a look at what are the results for that module as follows. For example, we can get what are the genes from salmon that generated the highest signal (note now that the Pvalue column has been transformed using -log10 function, so we seek for the highest values now).
+
+```{r}
+salmonsignals = read.delim("~/tmp/estimates/pdgwas2014VEGASresults.txt.cogdxad.rosmap.salmon.pvals.txt",stringsAsFactors=F,sep=" ")
+salmonsignals$Gene[order(salmonsignals$Pvalue,decreasing=T)]
+```
+
+And we will see many interesting genes, with immune function (e.g. TREM2, CD14). However, as a caution note, we should discard the HLA family as this family of genes is highly mutated but also highly conserved and one of the assumptions of gene-level assocation mapping is that genes which are highly mutated are difficult to handle and will raise false positives. A visual way of testing how our observed z-score is departing from the null distribution of values can be done as follows, by using all the z-stats stored for salmon
+
+```{r}
+salmonsim= readRDS("~/tmp/estimates/pdgwas2014VEGASresults.txt.cogdxad.rosmap.salmon.tstats.rds")
+hist(salmonsim$t,xlab="z-score values",main="Situation of observed (red) and null z-scores for salmon")
+abline(v=as.numeric(result$zscore[result$module == "salmon"]),col="red")
+```
+
+As we see, it is far away from the mean but not so far to survive multiple testing. The signal for green is more evident
+
+```{r}
+greensim= readRDS("~/tmp/estimates/pdgwas2014VEGASresults.txt.cogdxad.rosmap.green.tstats.rds")
+hist(salmonsim$t,xlab="z-score values",main="Situation of observed (red) and null z-scores for green")
+abline(v=as.numeric(result$zscore[result$module == "green"]),col="red")
+```
+
+
+The tutorial ends here.
+
