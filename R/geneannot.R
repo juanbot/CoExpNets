@@ -231,7 +231,6 @@ reportOnGenesMultipleTissue = function(tissues,genes,silent=F,
     tissue.report = reportOnGenes(tissue=tissue,
                                   genes=genes,silent=silent,
                                   which.one=which.one,
-                                  mantel.its=mantel.its,
                                   alt.probes=alt.probes,
                                   include.pd=include.pd,
                                   gwases=gwases)
@@ -431,51 +430,6 @@ reportOnModule = function(tissue="SNIG",
 
 }
 
-reportOnModuleReplication = function(tissue="SNIG",module,
-                                     which.one="exonic",mantel.its=1000){
-
-  #Note that only the combination binary-between and co-expression within make sense
-  #The other two are not good
-
-  #Mantel results
-  stopifnot(which.one == "exonic")
-  mt.between = readRDS(paste0("supplementary/rdsnets/exonic/mantel.",tissue,
-                              ".gtex.binary.between.",mantel.its,".data.rds"))
-  mt.within = readRDS(paste0("supplementary/rdsnets/exonic/mantel.",tissue,
-                             ".gtex.coexpression.within.",mantel.its,".data.rds"))
-  mt.mic.between = readRDS(paste0("supplementary/rdsnets/exonic/mantel.",tissue,
-                                  ".microarray.binary.between.",mantel.its,".data.rds"))
-  mt.mic.within = readRDS(paste0("supplementary/rdsnets/exonic/mantel.",tissue,
-                                 ".microarray.coexpression.within.",mantel.its,".data.rds"))
-
-  if(module %in% names(mt.within))
-    mt.within.p.vals = mt.within[[module]]$p
-  else
-    mt.within.p.vals = "void"
-  if(module %in% names(mt.between))
-    mt.between.p.vals = mt.between[[module]]$p
-  else
-    mt.between.p.vals = "void"
-  if(module %in% names(mt.mic.within))
-    mt.mic.within.p.vals = mt.mic.within[[module]]$p
-  else
-    mt.mic.within.p.vals = "void"
-  if(module %in% names(mt.mic.between))
-    mt.mic.between.p.vals = mt.mic.between[[module]]$p
-  else
-    mt.mic.between.p.vals = "void"
-  preservation = getZSummary(tissue=tissue,module=module,which.one=which.one)
-  pres.gtex = getZSummary(tissue=tissue,module=module,which.one="exonic.vs.gtex")
-  pres.micro = getZSummary(tissue=tissue,module=module,which.one="exonic.vs.micro")
-
-  if(is.na(preservation))
-    preservation = "void"
-  to.return = c(preservation,pres.gtex,pres.micro,
-                mt.within.p.vals,mt.between.p.vals,mt.mic.within.p.vals,mt.mic.between.p.vals)
-  names(to.return) = c("Z.summary","Z.summary.GTEx","Z.summary.micro","mantel.GNAT.within","mantel.GNAT.between",
-                       "mantel.micro.within","mantel.micro.between")
-  return(to.return)
-}
 
 getZSummary = function(tissue="SNIG",
                        modules=c("red"),
