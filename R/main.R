@@ -4,25 +4,74 @@ print.bootnet = function(net){
   cat("A bootstrapped network created with mode",net$mode,"\n",
       "Soft thresholding parameter (beta):",net$beta,"\n",
       "Adjacency summary\n")
+  genes = names(net$moduleColors)
+  if(length(genes) == 0)
+    genes = names(net$adjacency)
+
   print(summary(net$adjacency))
   cat("Final number of modules",length(unique(net$moduleColors)),"\n")
-  cat("All samples net final number of modules",
-      length(unique(net$allsamplesnet$moduleColors)),"\n")
+  if(!is.null(net$allsamplesnet))
+    cat("All samples net final number of modules",
+        length(unique(net$allsamplesnet$moduleColors)),"\n")
+  else
+    cat("No all samples net available\n")
 
   rdiffs = NULL
   fdiffs = NULL
   adiffs = NULL
   clusters = NULL
-  for(i in 1:length(net$subnets)){
+
+  indexes = names(net$subnets)
+  if(is.null(indexes))
+    indexes = 1:length(net$subnets)
+  for(i in indexes){
+    #cat(i)
     if(!is.null(net$subnets[[i]]$subcluster)){
+      #cat("Other here\n")
       clusters = rbind(clusters,net$subnets[[i]]$subcluster)
+    }else{
+      #cat("here",i,"\n")
+      #str(net$subnets[[i]])
+      cluster = unlist(net$subnets[[i]]$partitions[length(net$subnets[[i]]$partitions)])
+      #print(str(cluster))
+      discGenes = net$subnets[[i]]$discGenes
+      if(length(discGenes) > 0){
+        newcluster = NULL
+        for(gene in 1:length(genes)){
+          if(genes[gene] %in% discGenes)
+            newcluster = c(newcluster,"null")
+          else{
+            module = cluster[names(cluster) == genes[gene]]
+            newcluster = c(newcluster,module)
+          }
+
+        }
+        cat("#")
+        #newcluster = cluster[match(names(cluster),genes)]
+        ##newcluster = vector(mode="character",length = length(genes))
+        #cluster[match()]
+        #print(discGenes)
+        #print(length(genes))
+        #maskgenes = genes[!(genes %in% discGenes)]
+        #maskgenes = match(maskgenes,genes)
+        #print(length(maskgenes))
+        #print(length(cluster))
+        #newcluster = vector(mode="character",length = length(genes))
+        #newcluster[mask] = cluster
+        #newcluster[!mask] = "null"
+      }else
+        cat("-")
+      clusters = rbind(clusters,cluster)
     }
+
+
   }
 
   for(i in 2:nrow(clusters)){
     rdiffs = c(rdiffs,mclust::adjustedRandIndex(clusters[i,],clusters[i-1,]))
     fdiffs = c(fdiffs,mclust::adjustedRandIndex(clusters[i-1,],net$moduleColors))
-    adiffs = c(adiffs,mclust::adjustedRandIndex(clusters[i,],net$allsamplesnet$moduleColors))
+    if(!is.null(net$allsamplesnet))
+      adiffs = c(adiffs,mclust::adjustedRandIndex(clusters[i,],net$allsamplesnet$moduleColors))
 
   }
   cat("Successive Rand simmilarities\n")
@@ -31,6 +80,7 @@ print.bootnet = function(net){
   print(adiffs)
   cat("Rand differences with final net\n")
   print(fdiffs)
+  return(list(rdiffs=rdiffs,adiffs=adiffs,fdiffs=fdiffs))
 }
 
 #' plotMDS - Testing gene sepparability with multi-dimensional
@@ -89,7 +139,7 @@ plotMDS = function(rpkms.net,path,covs,covvars,label,n.mds=-1){
 #' @param tissue
 #' @param b
 #' @param ...
-#' @param removeTOM
+#' @param removeTOMF
 #' @param min.cluster.size
 #' @param waitFor
 #'
@@ -100,7 +150,7 @@ plotMDS = function(rpkms.net,path,covs,covvars,label,n.mds=-1){
 getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
                                  expr.data,
                                  n.iterations=50,
-                                 removeTOM=F,
+                                 removeTOMF=F,
                                  job.path,
                                  min.cluster.size=100,
                                  allsampsnet=F,
@@ -200,7 +250,7 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
   ltissue = paste0(tissue,"_b_Final")
   params$handlers = handlers
   params$expr.data = expr.data
-  params$removeTOM = removeTOM
+  params$removeTOMF = removeTOMF
   params$tissue = tissue
   params$allsampsnet = allsampsnet
   params$n.iterations = n.iterations
@@ -239,7 +289,7 @@ postCluster = function(handlers,
                        n.iterations,
                        min.cluster.size,
                        blockTOM=F,
-                       removeTOM=F,
+                       removeTOMF=F,
                        each=1,
                        mode,
                        waitFor=24*3600,
@@ -291,14 +341,14 @@ postCluster = function(handlers,
             CoExpNets::removeTOM(net$tom)
           }else{
             localTOM = readRDS(net$tom)
-            if(removeTOM)
+            if(removeTOMF)
               file.remove(net$tom)
             cat("Quantile normalization\n")
             localTOM = preprocessCore::normalize.quantiles(localTOM)
             print("Done")
 
           }
-          if(!is.null(net$discGenes)){
+          if(length(net$discGenes) > 0){
             mask = !(genes %in% net$discGenes)
             TOM[mask,mask] = TOM[mask,mask] + localTOM
           }else
@@ -439,6 +489,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
                                excludeGrey=F,
                                each=1,
                                blockTOM=F,
+                               removeTOMF=F,
                                min.cluster.size=100,
                                tissue="Bootstrap",
                                b=10,...){
@@ -492,18 +543,19 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
     cat("Accumulating TOM",net$tom,"\n")
     if(blockTOM){
       cat("Reading TOM\n")
-      localTOM = CoExpNets::readTOM(net$tom)
+      #localTOM = CoExpNets::readTOM(net$tom)
+      localTOM = readTOM(net$tom)
       CoExpNets::removeTOM(net$tom)
     }else{
       localTOM = readRDS(net$tom)
-      if(removeTOM)
+      if(removeTOMF)
         file.remove(net$tom)
       cat("Quantile normalization\n")
       localTOM = preprocessCore::normalize.quantiles(localTOM)
       print("Done")
 
     }
-    if(!is.null(net$discGenes)){
+    if(length(net$discGenes) > 0){
       print(net$discGenes)
       print(genes)
       mask = !(genes %in% net$discGenes)
@@ -511,13 +563,19 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
       print(str(TOM))
       print(str(localTOM))
       TOM[mask,mask] = TOM[mask,mask] + localTOM
-    }else
+    }else{
+      cat("No discarged genes\n")
+      print(str(TOM))
+      print(str(localTOM))
       TOM = TOM + localTOM
+    }
+
 
     rm("localTOM")
     print("Done")
 
     if(count %% each == 0 | count == nrow(indexes)){
+
       dissTOM = 1 - TOM/count
       geneTree = flashClust::flashClust(as.dist(dissTOM), method = "average")
       print("Now the genetree")
@@ -539,14 +597,15 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
       #This will print the same, but using as label for modules the corresponding colors
       localnet = NULL
       localnet$moduleColors = CoExpNets::dropGreyModule(WGCNA::labels2colors(dynamicMods))
-      outnet = CoExpNets::applyKMeans(tissue=tissue,
+      outnet = applyKMeans(tissue=tissue,
                                       n.iterations=n.iterations,
                                       net.file=localnet,
                                       expr.data=expr.data)
 
       net$subcluster = outnet$moduleColors
 
-    }
+    }else
+      cat("No entering here\n")
     net$indexes = indexes[i,]
     allsubnets[[i]] = net
 
@@ -564,9 +623,10 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
   saveRDS(TOM,finalnet$tom)
   finalnet$adjacency = adjacency
   finalnet$moduleColors = outnet$moduleColors
+  print(finalnet$moduleColors)
   finalnet$subnets = allsubnets
 
-  outnet = CoExpNets::applyKMeans(tissue=tissue,
+  outnet = applyKMeans(tissue=tissue,
                                   n.iterations=n.iterations,
                                   net.file=finalnet,
                                   expr.data=expr.data)
@@ -672,7 +732,7 @@ getDownstreamNetwork = function(tissue="mytissue",
     final.net = paste0(job.path,"/","net",tissue,".",
                        net.and.tom$net$beta,".it.",n.iterations,".rds")
 
-  outnet = CoExpNets::applyKMeans(tissue=tissue,
+  outnet = applyKMeans(tissue=tissue,
                                   n.iterations=n.iterations,
                                   net.file=net.and.tom$net,
                                   expr.data=expr.data,
@@ -1029,6 +1089,7 @@ applyKMeans <- function(tissue,
   }
 
   print("The k-means algorithm finished correctly")
+  print(net$moduleColors)
   return(net)
 }
 
@@ -1535,9 +1596,12 @@ trasposeDataFrame = function(file.in,first.c.is.name=F){
 #'
 #' @examples
 saveTOM = function(tom, clusters, filepref){
+  print("Hello saveTOM!!!!")
+  print(clusters)
   modules = unique(clusters)
   metadata = NULL
   lapply(modules,function(x){
+    print(paste0("saving",x))
     mask = clusters %in% x
     tomname = paste0(filepref,"_",x,".rds")
     saveRDS(tom[mask,mask],tomname)
@@ -1556,6 +1620,7 @@ saveTOM = function(tom, clusters, filepref){
 #'
 #' @examples
 readTOM = function(filepref){
+  cat("Hello!!!!!")
   mdfile = paste0(filepref,"_metadata.rds")
   if(!file.exists(mdfile))
     stop(paste0("Error: metadata file",mdfile," not found"))
