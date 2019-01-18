@@ -453,7 +453,7 @@ postCluster = function(handlers,
                                                              net.type="signed",
                                                              debug=F,
                                                              n.iterations=n.iterations,
-                                                             save.tom=F)$net
+                                                             save.tom=F)
   }
 
   if(!is.null(finalnet)){
