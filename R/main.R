@@ -739,6 +739,7 @@ getDownstreamNetwork = function(tissue="mytissue",
                                   excludeGrey=excludeGrey,
                                   min.exchanged.genes = min.exchanged.genes)
 
+
   if(save.tom){
     if(blockTOM)
       saveTOM(tom=net.and.tom$tom,
@@ -978,7 +979,7 @@ applyKMeans <- function(tissue,
   #Gather the current partition we start from
   #partition.in.colors <- net$moduleColors
   clusters = net$moduleColors
-
+  geneNames = names(clusters)
   #Step 3
   eigengenes = WGCNA::moduleEigengenes(expr.data,net$moduleColors,
                                        excludeGrey=excludeGrey)
@@ -1051,6 +1052,7 @@ applyKMeans <- function(tissue,
 
     print(table(new.clusters))
     new.clusters = colnames(centroids)[new.clusters]
+    names(new.clusters) = geneNames
     #print(table(new.clusters))
 
     cat("We got",length(new.clusters),"genes in partition\n")
@@ -1079,7 +1081,9 @@ applyKMeans <- function(tissue,
     #saveRDS(partitions,partitions.file)
 
     net = NULL
-    net$moduleColors = new.clusters
+    net$moduleColors = WGCNA::labels2colors(new.clusters)
+    names(net$moduleColors) = geneNames
+    names(net)
     net$MEs = WGCNA::moduleEigengenes(expr.data,
                                       net$moduleColors,
                                       excludeGrey=excludeGrey)$eigengenes

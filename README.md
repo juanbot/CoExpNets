@@ -1,36 +1,16 @@
 
 # CoExpNets brief instructions 
 
+CoExpNets is based on the excellent and widely used WGNCA package, but incorporates a refinement we detail in the following paper <https://bmcsystbiol.biomedcentral.com/articles/10.1186/s12918-017-0420-6>. It provides ways to create, access and exploit networks based on basic WGCNA features and ideas but we extend them a little bit and make it accessible through a Web interface.
 
-ROSMAP is a project you can access from here <https://www.synapse.org/#!Synapse:syn3219045>. It includes transcriptomics from more than 600 samples. Using the package <https://github.org/CoExpNets> we created four co-expression networks for them.
-
-# Introduction
-
-This package can be used through the `CoExpNets` package to access and analyze these networks and to create new ones. 
-
-In the package you will find networks for the following tissues
-```r
-library(CoExpNets)
-library(CoExpROSMAP)
-CoExpROSMAP::initDb()
-getAvailableNetworks()
-```
-
-`[1] "notad"      "probad"     "ad"         "allsamples"`
-
-Each network is compound of
-* An RDS file with the network itself. When reading the object you obtain a list with `moduleColors` and `MEs`, the clustering of nodes and the module eigengenes respectively.
-* A csv with the enrichment for the modules from the Gene Ontology, REACTOME and KEGG pathway annotation databases.
-* The residuals (corrected by PMI, Age, Gender and Batch, with ComBat) and Surrogate variables with SVA.
+An interesting part of this is that we make available a series of packages like CoExpROSMAP <https://github.com/juanbot/CoExpROSMAP> and CoExpGTEx <https://github.com/juanbot/CoExpGTEx> with already created networks you can use and exploit through the main package, CoExpNets.
 
 ## Install the development version from GitHub:
 
-Recommended that you install first CoExpNets
+Simply do this
 ```r
 devtools::install_github('juanbot/CoExpNets')
 ```
-And then this package
 
-```r
-devtools::install_github('juanbot/CoExpROSMAP')
-```
+And that will be all. More help to come soon.
+In the meantime, you can access the tutorials in the package.
