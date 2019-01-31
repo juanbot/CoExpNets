@@ -690,9 +690,17 @@ UserGOenrichment <- function(net.file,net.name=NULL,which.one="exonic",do.plot=F
 
 }
 
-annotate.bootnet = function(net,subnets=T,...){
-  net$go = getGProfilerOnNet(net.file=net,...)
-  net$ct = annotateByCellType(net.in=net)
+
+
+annotate = function(net,subnets=T,organism="hsapiens",ensembl=F){
+  if(typeof(net) == "character")
+    net = readRDS(net)
+  if(is.null(names(net$moduleColors)))
+    names(net$moduleColors) = names(net$adjacency)
+  cat("Annotating network",basename(net$file),"\n")
+  net$go = getGProfilerOnNet(net.file=net,out.file=NULL,ensembl=ensembl)
+  notHuman = ifelse(organism == "hsapiens",F,T)
+  net$ct = genAnnotationCellType(net.in=net,return.processed=F,which.one="new",notHuman=notHuman)
   # if(subnets){
   #   subnetsgo = NULL
   #   subnets = net$subnets
@@ -704,6 +712,7 @@ annotate.bootnet = function(net,subnets=T,...){
   #     subnetsgo[[job]] = getGProfilerOnNet(net.file=net,...)
   #   }
   # }
+  net
 }
 
 
@@ -722,7 +731,7 @@ getGProfilerOnNet <- function(net.file,
                               exclude.iea=T,
                               organism = "hsapiens",
                               correction.method="gSCS",
-                              out.file=paste0(net.file,"_gprofiler.csv"),...){
+                              out.file=NULL,...){
 
   if(typeof(net.file) == "character")
     net <- readRDS(net.file)
@@ -730,6 +739,7 @@ getGProfilerOnNet <- function(net.file,
     net = net.file
 
   modules = unique(net$moduleColors)
+
   background <- names(net$moduleColors)
   if(ensembl)
     background <- fromEnsembl2GeneName(background)
@@ -749,7 +759,8 @@ getGProfilerOnNet <- function(net.file,
                              src_filter=filter,
                              organism=organism,
                              exclude_iea=exclude.iea)
-  print(go)
+  if(nrow(go) == 0)
+    return(go)
   #png_fn = paste0(out.file,".png"),
   #no_isects=T)
   go.out = cbind(go,rep(NA,nrow(go)))
@@ -757,18 +768,21 @@ getGProfilerOnNet <- function(net.file,
 
   #	#Now we will add our own column with the information content of each term
   #	#So it is possible to evaluate them
+  cat("Generating IC-BP")
   loadICsGOSim("BP")
   mask = go$domain == "BP"
   bp.terms.go = go$term.id[mask]
   bp.ic.go = IC[bp.terms.go]
   go.out$IC[mask] = bp.ic.go
 
+  cat("Generating IC-MF")
   loadICsGOSim("MF")
   mask = go$domain == "MF"
   mf.terms.go = go$term.id[mask]
   mf.ic.go = IC[mf.terms.go]
   go.out$IC[mask] = mf.ic.go
 
+  cat("Generating IC-CC")
   loadICsGOSim("CC")
   mask = go$domain == "CC"
   cc.terms.go = go$term.id[mask]
@@ -1021,9 +1035,12 @@ cellTypeByModule = function(tissue="None",
 
 genAnnotationCellType = function(tissue="None",
                                  which.one="new",
-                                 markerspath,
+                                 markerspath=system.file("ctall", "",
+                                                         package = "CoExpNets"),
                                  net.in=NULL,
                                  legend=NULL,
+                                 doheatmap=F,
+                                 notHuman=F,
                                  plot.file=NULL,
                                  threshold=20,
                                  return.processed=T,
@@ -1044,7 +1061,8 @@ genAnnotationCellType = function(tissue="None",
     net = getNetworkFromTissue(tissue=tissue,which.one=which.one)
   }
   modules = unique(net$moduleColors)
-
+  if(notHuman)
+    names(net$moduleColors) = toupper(names(net$moduleColors))
   #So the 1st heatmap
   #will have a column for each cell.types element and a row for
   #each module and we will show -log10(p-values) in a scale
@@ -1143,26 +1161,28 @@ genAnnotationCellType = function(tissue="None",
 
   ctypedata = ctypedata[order(rownames(ctypedata)),,drop=FALSE]
 
+  if(doheatmap){
+    if((ncol(ctypedata) >= 2)){
+      if(is.null(legend))
+        legend = tissue
+      if(!is.null(plot.file))
+        pdf(plot.file,width=15,height=8)
+      heatmap.2(ctypedata[apply(ctypedata,1,function(x){ any(x > 2)}),],
+                trace="none",
+                col=heat.colors(100)[100:1],
+                cexCol=0.7,
+                cexRow=0.7,
+                Rowv=F,
+                Colv=T,
+                main=paste0("Cell type enrichment for ",legend),
+                key=F,srtCol=45,dendrogram="none",
+                margins=c(6,20))
 
-  if((ncol(ctypedata) >= 2)){
-    if(is.null(legend))
-      legend = tissue
-    if(!is.null(plot.file))
-      pdf(plot.file,width=15,height=8)
-    heatmap.2(ctypedata[apply(ctypedata,1,function(x){ any(x > 2)}),],
-              trace="none",
-              col=heat.colors(100)[100:1],
-              cexCol=0.7,
-              cexRow=0.7,
-              Rowv=F,
-              Colv=T,
-              main=paste0("Cell type enrichment for ",legend),
-              key=F,srtCol=45,dendrogram="none",
-              margins=c(6,20))
-
-    if(!is.null(plot.file))
-      dev.off()
+      if(!is.null(plot.file))
+        dev.off()
+    }
   }
+
   if(return.processed)
     return(ctypedata)
   return(uctypedata)

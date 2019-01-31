@@ -23,7 +23,8 @@ fromGeneName2EnsemblBM = function(genes,use38=T){
     external.gene.att = "external_gene_name"
   }else{
     ensembl <- useMart(host="jun2013.archive.ensembl.org",
-                       biomart="ENSEMBL_MART_ENSEMBL", dataset="hsapiens_gene_ensembl")
+                       biomart="ENSEMBL_MART_ENSEMBL",
+                       dataset="hsapiens_gene_ensembl")
     external.gene.att = "external_gene_id"
   }
 

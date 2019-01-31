@@ -1,5 +1,136 @@
 
 
+#' Title
+#'
+#' @param net
+#' @param folder
+#'
+#' @return
+#' @export
+#'
+#' @examples
+milkNet = function(net,folder){
+  if(typeof(net) == "character"){
+    stopifnot(file.exists(net))
+    net = readRDS(net)
+  }
+
+  netName = gsub(".rds","",basename(net$file))
+  #Print the clusters
+  clusters = NULL
+  if(is.null(names(net$moduleColors)))
+     names(net$moduleColors) = names(net$adjacency)
+  clusters = list(genes=names(net$moduleColors),modules=net$moduleColors)
+             #              stringsAsFactors=F)
+  dir.create(folder)
+  write.table(clusters,paste0(folder,netName,"_clusters.tsv"),quote=F,row.names=F,col.names=T,sep="\t")
+  adj = list(genes=names(net$moduleColors),adjacency=net$adjacency)
+  write.table(adj,paste0(folder,netName,"_adjacency.tsv"),quote=F,row.names=F,col.names=T,sep="\t")
+
+  if(!is.null(net$go))
+    write.table(net$go,paste0(folder,netName,"_funcAnnotaton.tsv"),quote=F,row.names=F,col.names=T,sep="\t")
+  else
+    cat("No functional annotation to generate for",netName,"\n")
+  if(!is.null(net$ct)){
+    ct = net$ct
+    ct = cbind(rownames(net$ct),ct)
+    colnames(ct)[1] = "markerset"
+    write.table(ct,paste0(folder,netName,"_cellTypes.tsv"),quote=F,row.names=F,col.names=T,sep="\t")
+  }
+
+  else
+    cat("No cell annotation to generate for",netName,"\n")
+
+  basicFacts = c(netName,net$mode,net$beta,
+                 length(net$moduleColors),
+                 length(unique(net$moduleColors)),
+                 net$file)
+  print(basicFacts)
+
+  write.table(list(info=basicFacts,
+                   value=c("name","mode","beta","ngenes","nmodules","netfile")),
+              paste0(folder,netName,"_basicInfo.tsv"),
+              quote=F,row.names=F,col.names=T,sep="\t")
+
+  if(!is.null(net$subnets)){
+    rdiffs = NULL
+    fdiffs = NULL
+    adiffs = NULL
+    clusters = NULL
+
+    indexes = names(net$subnets)
+    if(is.null(indexes))
+      indexes = 1:length(net$subnets)
+    for(i in indexes){
+      #cat(i)
+      if(!is.null(net$subnets[[i]]$subcluster)){
+        #cat("Other here\n")
+        clusters = rbind(clusters,net$subnets[[i]]$subcluster)
+      }else{
+        #cat("here",i,"\n")
+        #str(net$subnets[[i]])
+        cluster = unlist(net$subnets[[i]]$partitions[length(net$subnets[[i]]$partitions)])
+        #print(str(cluster))
+        discGenes = net$subnets[[i]]$discGenes
+        if(length(discGenes) > 0){
+          newcluster = NULL
+          for(gene in 1:length(genes)){
+            if(genes[gene] %in% discGenes)
+              newcluster = c(newcluster,"null")
+            else{
+              module = cluster[names(cluster) == genes[gene]]
+              newcluster = c(newcluster,module)
+            }
+
+          }
+          cat("#")
+          #newcluster = cluster[match(names(cluster),genes)]
+          ##newcluster = vector(mode="character",length = length(genes))
+          #cluster[match()]
+          #print(discGenes)
+          #print(length(genes))
+          #maskgenes = genes[!(genes %in% discGenes)]
+          #maskgenes = match(maskgenes,genes)
+          #print(length(maskgenes))
+          #print(length(cluster))
+          #newcluster = vector(mode="character",length = length(genes))
+          #newcluster[mask] = cluster
+          #newcluster[!mask] = "null"
+        }else
+          cat("-")
+        clusters = rbind(clusters,cluster)
+      }
+
+
+    }
+
+    if(!is.null(net$allsamplesnet)){
+      if(is.null(net$allsamplesnet$moduleColors)){
+        net$allsamplesnet$moduleColors = net$allsamplesnet$partitions[[length(net$allsamplesnet$partitions)]]
+      }
+    }
+    for(i in 2:nrow(clusters)){
+      rdiffs = c(rdiffs,mclust::adjustedRandIndex(clusters[i,],clusters[i-1,]))
+      fdiffs = c(fdiffs,mclust::adjustedRandIndex(clusters[i-1,],net$moduleColors))
+      if(!is.null(net$allsamplesnet)){
+        adiffs = c(adiffs,mclust::adjustedRandIndex(clusters[i,],net$allsamplesnet$moduleColors))
+
+      }
+    }
+    if(is.null(adiffs))
+      adiffs = rep(0,length(rdiffs))
+    print(rdiffs)
+    print(adiffs)
+    print(fdiffs)
+
+    bootStats = list(rdiffs=rdiffs,adiffs=adiffs,fdiffs=fdiffs)
+    write.table(bootStats,paste0(folder,netName,"_bootStrapStats.tsv"),
+                quote=F,row.names=F,col.names=T,sep="\t")
+
+  }
+
+}
+
 print.bootnet = function(net){
   cat("A bootstrapped network created with mode",net$mode,"\n",
       "Soft thresholding parameter (beta):",net$beta,"\n",
@@ -805,6 +936,19 @@ getExchangedGenes <- function(old.partition,new.partition){
 #total.specific			number of genes in the global condition list
 #total.net				number of genes in the network
 
+#' Title
+#'
+#' @param n.module
+#' @param n.module.and.specific
+#' @param total.specific
+#' @param total.net
+#' @param test
+#' @param oldform
+#'
+#' @return
+#' @export
+#'
+#' @examples
 testGeneSet = function(n.module,n.module.and.specific,total.specific,total.net,test="fisher",oldform=F){
   stopifnot(test == "fisher" | test == "chi")
   vector.data = matrix(ncol=2,nrow=2)
@@ -836,6 +980,19 @@ plotModSizes = function(which.one,tissue){
           ylab="Mod size",las=2)
 }
 
+#' Title
+#'
+#' @param expr.data
+#' @param powers
+#' @param title
+#' @param plot.file
+#' @param net.type
+#' @param cor.type
+#'
+#' @return
+#' @export
+#'
+#' @examples
 generateBetaStudy <- function(expr.data,powers=c(1:30),title=NULL,plot.file=NULL,
                               net.type="signed",cor.type="pearson"){
   stopifnot(cor.type == "pearson" | cor.type == "spearman")
@@ -891,8 +1048,26 @@ generateBetaStudy <- function(expr.data,powers=c(1:30),title=NULL,plot.file=NULL
 #' between gene pairs is calculated on the basis of whether the network is signed or not.
 #' For details on the approach see paper
 #' <https://bmcsystbiol.biomedcentral.com/articles/10.1186/s12918-017-0420-6>
+#' #Step 1. Let D be the expression data in which dij in D represents the expression value for
+#' sample i and gene j, being s samples and g genes in total.
+#' Step 2. Construct the partition by the WGCNA process, let P_D={m_1, m_2, ..., m_n} be
+#' that partition where m_k is the k-th module.
+#' Step 3. Get the eigengenes for each module within the partition, E={e_1, e_2, ..., e_n}
+#' Step 4. Set up the k-means clustering
+#' Step 4.1. Set k to n
+#' Step 4.2. Set the centroids C to the eigengenes E, thus C to E
+#' Step 5. Run the algorithm and monitor its evolution
+#' Step 5.1 Set iterations to 0
+#' Step 5.2 Create a new partition P', given C with n modules such that, for each gene, 1 <=
+#' j <= g, g_j belongs to the module c_t in C such that a distance meassure d(g_j,c_t) is
+#' minimum.
+#' Step 5.3 Calculate eigengenes of P', giving a new E'
+#' Step 5.4 Evaluate the progress. If progress done, set iterations to iterations + 1 and
+#' C to E' and go to step 5.2
+#' Step 5.5 Finish
+#
 #'
-#' @param tissue
+#' @param tissue A tissue name
 #' @param create.tom
 #' @param distance.type
 #' @param centroid.type
@@ -953,25 +1128,7 @@ applyKMeans <- function(tissue,
   #print(paste0("Partitions data will be at ",partitions.file))
   #print(paste0("Evolution data will be at ",evolution.file))
 
-  #ALGORITHM SPECIFICATION
-  #Step 1. Let D be the expression data in which dij in D represents the expression value for
-  #sample i and gene j, being s samples and g genes in total.
-  #Step 2. Construct the partition by the WGCNA process, let P_D={m_1, m_2, ..., m_n} be
-  #that partition where m_k is the k-th module.
-  #Step 3. Get the eigengenes for each module within the partition, E={e_1, e_2, ..., e_n}
-  #Step 4. Set up the k-means clustering
-  #Step 4.1. Set k to n
-  #Step 4.2. Set the centroids C to the eigengenes E, thus C to E
-  #Step 5. Run the algorithm and monitor its evolution
-  #Step 5.1 Set iterations to 0
-  #Step 5.2 Create a new partition P', given C with n modules such that, for each gene, 1 <=
-  #		j <= g, g_j belongs to the module c_t in C such that a distance meassure d(g_j,c_t) is
-  #		minimum.
-  #		Step 5.3 Calculate eigengenes of P', giving a new E'
-  #		Step 5.4 Evaluate the progress. If progress done, set iterations to iterations + 1 and
-  #		C to E' and go to step 5.2
-  #Step 5.5 Finish
-  #
+
 
 
   ##Step 1.
@@ -1141,8 +1298,44 @@ dropGreyModule = function(colors,gcolor="grey"){
 
 }
 
-getAndPlotNetworkLong <- function(expr.data,beta,net.type="signed",
-                                  tissue.name="SNIG",title=NULL,
+#' Title Create a WGCNA network + TOM + some plots
+#' If you are not interested in the k-means or before getting into that you want to
+#' have a look at the basic WGCNA network use this method
+#'
+#' @param expr.data Aan object or a file, genes at columns, samples at rows.
+#' The network net$moduleColors vector will be generated as genes are in the data.frame.
+#' @param beta If beta is < 0 then it is obtained automatically. You can set your own.
+#' @param net.type Either "signed" or "unsigned" for easier or trickier MM values interpretation
+#' @param tissue.name The label you want the code to use for naming the network
+#' @param title For possible plots
+#' @param additional.prefix Something you want to add to the naming of files generated to avoid
+#' potential clashes
+#' @param min.cluster.size Minimum number of genes for a group of them to be a cluster
+#' @param save.plots You want plots?
+#' @param return.tom Set this to TRUE if you want the TOM returned with the rest of stuff (it may be really big)
+#' @param excludeGrey Discard grey genes from the result network
+#' @param max.k.cutoff Connectivity parameter
+#' @param r.sq.cutoff Only beta values above this value for the adjusted linear regression model are
+#' considered
+#' @param cor.type Values in "pearson", "kendall", "spearman"
+#'
+#' @return If all goes well, a network with the following elements (as a list)
+#' * MEs will be a matrix with the eigengenes (columns) and the values for each sample (rows)
+#' * moduleLabels A vector of labels corresponding to into which cluster each gene is.
+#' labels appear in the same order as genes were disposed in the expression data matrix
+#' * moduleColors A vector of colors corresponding to into which cluster each gene is. Useful to
+#' refer to each module with a color and to signal them at plots. The vector is named with the
+#' genes and they appear in the same order as genes were disposed in the expression data matrix
+#' beta Is the beta value used
+#' type The type of network as in "signed" or "unsigned"
+#' geneTree The dendrogram from which the partition was generated
+#' @export
+#'
+#' @examples
+getAndPlotNetworkLong <- function(expr.data,beta,
+                                  net.type="signed",
+                                  tissue.name="MyTissue",
+                                  title=NULL,
                                   additional.prefix=NULL,
                                   min.cluster.size=100,
                                   save.plots=TRUE,
@@ -1395,6 +1588,28 @@ corDistance = function(a,b,signed=TRUE,cor.type="pearson"){
 }
 
 
+#' Title Obtain the Module Membership of genes
+#' This function works by getting the Pearson correlation between the
+#' eigengene of the module and the gene(s).
+#'
+#' @param net The network can be either and object or a file
+#' @param expr.data.file Again an object or a file, genes at columns, samples at rows.
+#' It is expected that the genes are in the same order as they are expressed in the
+#' network net$moduleColors vector. Use this parameter together with the net one and
+#' which.one set to "new" for a network which is not in the DDBB.
+#' @param tissue A tissue as it can be find in the network DDBB
+#' @param genes The gene names. If set to true, the MM of all genes in the network is obtained
+#' @param table.format If you want results as a data.frame set this to TRUE
+#' @param which.one The category the network belongs to. If not in the DDBB just ignore it
+#' @param silent Set to true if you want no log
+#' @param keep.grey Use grey genes too
+#' @param alt.gene.index You can pass genes in a different order, use this index order for that
+#'
+#' @returnk Depending on the value of table.format, a data.frame with genes and MM values or a list
+#' with genes as keys and the MMs as values
+#' @export
+#'
+#' @examples
 getMM = function(net=NULL,
                  expr.data.file=NULL,
                  tissue,genes,
@@ -1405,6 +1620,10 @@ getMM = function(net=NULL,
 
   if(is.null(net))
     net = getNetworkFromTissue(tissue,which.one)
+  else{
+    if(typeof(net) == "character")
+      net = readRDS(net)
+  }
   if(is.null(expr.data.file))
     expr.data = getExprDataFromTissue(tissue=tissue,which.one=which.one,only.file = F)
   else{
@@ -1477,8 +1696,8 @@ getMM = function(net=NULL,
     return(out.table)
   }
   return(mm)
-
 }
+
 
 
 corWithCatTraits = function(tissue,which.one,covlist,covs=NULL){
