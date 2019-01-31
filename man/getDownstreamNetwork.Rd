@@ -2,11 +2,13 @@
 % Please edit documentation in R/main.R
 \name{getDownstreamNetwork}
 \alias{getDownstreamNetwork}
-\title{Title}
+\title{getDownstreamNetwork - Create a network}
 \usage{
-getDownstreamNetwork(tissue = "mytissue", n.iterations = 50, expr.data,
-  beta = -1, job.path = "~/tmp/", min.cluster.size = 30,
-  net.type = "signed", debug = F, exCludeGrey = FALSE)
+getDownstreamNetwork(tissue = "mytissue", n.iterations = 50,
+  min.exchanged.genes = 20, expr.data, beta = -1,
+  job.path = "~/tmp/", min.cluster.size = 30, net.type = "signed",
+  debug = F, blockTOM = F, save.tom = F, save.plots = F,
+  excludeGrey = FALSE)
 }
 \arguments{
 \item{tissue}{A label to use to refer to the results in files and downstream results}
@@ -33,12 +35,12 @@ for the tree cutting algorithm to convert from a dendogram to a cluster.}
 \item{debug}{Set this to true if you want a quick run of the method to test how it works with
 a small amount of your genes}
 
-\item{exCludeGrey}{If WGCNA detects grey genes, set it to TRUE if you want them removed
+\item{excludeGrey}{If WGCNA detects grey genes, set it to TRUE if you want them removed
 from the network before applying k-means}
 }
 \value{
 A file name that can be used to access your network
 }
 \description{
-Title
+getDownstreamNetwork - Create a network
 }
