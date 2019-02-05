@@ -171,23 +171,20 @@ initDb = function(){
 #' @examples
 addNet = function(which.one,tissue,netfile,ctfile,gofile,exprdatafile,overwrite){
 
-  if(!exists("coexp.nets"))
+  if(!exists("coexp.nets")){
     initDb()
+    coexp.nets[1,] <<- c(which.one,
+                         tissue,
+                         netfile,ctfile,gofile,exprdatafile)
+    return
+  }
+
 
   if(sum(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one) == 0){
-    if(is.null(coexp.nets)){
-      cat("Adding new network",tissue,"to the category",which.one,"to the database\n")
-      coexp.nets[1,] <<- c(which.one,
-                                              tissue,
-                                              netfile,ctfile,gofile,exprdatafile)
-    }else{
       cat("Adding new network",tissue,"to the category",which.one,"to the database\n")
       coexp.nets[nrow(coexp.nets) + 1,] <<- c(which.one,
                                               tissue,
                                               netfile,ctfile,gofile,exprdatafile)
-    }
-
-
   }else{
     if(overwrite){
       mask = coexp.nets$tissue == tissue & coexp.nets$which.one == which.one
