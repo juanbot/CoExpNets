@@ -176,30 +176,34 @@ addNet = function(which.one,tissue,netfile,ctfile,gofile,exprdatafile,overwrite)
   }
 
   if(is.null(coexp.nets)){
+    cat("Adding 1st net to the DDBB")
     coexp.nets <<- as.data.frame(list(which.one=which.one,
                                       tissue=tissue,
                                       netfile=netfile,ctfile=ctfile,
                                       gofile=gofile,
-                                      exprdatafile=exprdatafile))
-
-    return
-  }
-
-  if(sum(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one) == 0){
-      cat("Adding new network",tissue,"to the category",which.one,"to the database\n")
+                                      exprdatafile=exprdatafile),
+                                 stringsAsFactors=F)
+  }else{
+    if(sum(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one) == 0){
+      cat("Adding new network",tissue,
+          "to the category",which.one,
+          "to the database\n")
       coexp.nets[nrow(coexp.nets) + 1,] <<- c(which.one,
                                               tissue,
                                               netfile,ctfile,gofile,exprdatafile)
-  }else{
-    if(overwrite){
-      mask = coexp.nets$tissue == tissue & coexp.nets$which.one == which.one
-      coexp.nets[mask,] <<- c(which.one,
-                                              tissue,
-                                              netfile,ctfile,gofile,exprdatafile)
-    }
+    }else{
+      if(overwrite){
+        mask = coexp.nets$tissue == tissue & coexp.nets$which.one == which.one
+        coexp.nets[mask,] <<- c(which.one,
+                                tissue,
+                                netfile,ctfile,gofile,exprdatafile)
+      }
 
-    cat("Network",tissue,"in category",which.one,"already exists, we can´t overwrite\n")
+      cat("Network",tissue,"in category",which.one,"already exists, we can´t overwrite\n")
+    }
   }
+
+
 }
 
 
