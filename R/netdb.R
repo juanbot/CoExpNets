@@ -173,9 +173,12 @@ addNet = function(which.one,tissue,netfile,ctfile,gofile,exprdatafile,overwrite)
 
   if(!exists("coexp.nets")){
     initDb()
-    coexp.nets[1,] <<- c(which.one,
-                         tissue,
-                         netfile,ctfile,gofile,exprdatafile)
+    coexp.nets <<- as.data.frame(list(which.one=which.one,
+                         tissue=tissue,
+                         netfile=netfile,ctfile=ctfile,
+                         gofile=gofile,
+                         exprdatafile=exprdatafile))
+
     return
   }
 
