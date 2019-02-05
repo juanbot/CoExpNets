@@ -173,15 +173,17 @@ addNet = function(which.one,tissue,netfile,ctfile,gofile,exprdatafile,overwrite)
 
   if(!exists("coexp.nets")){
     initDb()
+  }
+
+  if(is.null(coexp.nets)){
     coexp.nets <<- as.data.frame(list(which.one=which.one,
-                         tissue=tissue,
-                         netfile=netfile,ctfile=ctfile,
-                         gofile=gofile,
-                         exprdatafile=exprdatafile))
+                                      tissue=tissue,
+                                      netfile=netfile,ctfile=ctfile,
+                                      gofile=gofile,
+                                      exprdatafile=exprdatafile))
 
     return
   }
-
 
   if(sum(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one) == 0){
       cat("Adding new network",tissue,"to the category",which.one,"to the database\n")
