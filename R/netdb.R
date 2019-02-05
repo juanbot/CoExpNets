@@ -149,13 +149,7 @@ loadDDBB = function(filein,outtmp="/tmp/tempddbb.txt"){
 #'
 #' @examples
 initDb = function(){
-  coexp.nets <<- as.data.frame(list(which.one="",
-                       tissue="",
-                       netfile="",
-                       ctfile="",
-                       gofile="",
-                       exprdatafile=""))
-
+  coexp.nets <<- NULL
   coexp.data <<- NULL
   coexp.ctype <<- NULL
   coexp.go <<- NULL
