@@ -1149,7 +1149,7 @@ genAnnotationCellType = function(tissue="None",
       ctypedata[category,module] = enrichment$CorrectedPvalues[i]
     }
   }
-
+  rownames(ctypedata) = gsub("cell_type_TableS1.csv.","",rownames(ctypedata))
   uctypedata = ctypedata
   ctypedata = ctypedata[,apply(ctypedata,2,function(x){ any(x < 1)}),drop=FALSE]
   ctypedata = -log10(ctypedata)

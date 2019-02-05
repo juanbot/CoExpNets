@@ -153,7 +153,7 @@ loadDDBB = function(filein,outtmp="/tmp/tempddbb.txt"){
 addNet = function(which.one,tissue,netfile,ctfile,gofile,exprdatafile,overwrite){
 
   if(!exists("coexp.nets"))
-    initDb(mode="empty")
+    CoExpNets::initDb(mode="empty")
 
   if(sum(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one) == 0){
     cat("Adding new network",tissue,"to the category",which.one,"to the database\n")
