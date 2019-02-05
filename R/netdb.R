@@ -149,7 +149,13 @@ loadDDBB = function(filein,outtmp="/tmp/tempddbb.txt"){
 #'
 #' @examples
 initDb = function(){
-  coexp.nets <<- NULL
+  coexp.nets <<- as.data.frame(list(which.one="",
+                       tissue="",
+                       netfile="",
+                       ctfile="",
+                       gofile="",
+                       exprdatafile=""))
+
   coexp.data <<- NULL
   coexp.ctype <<- NULL
   coexp.go <<- NULL
@@ -172,13 +178,22 @@ initDb = function(){
 addNet = function(which.one,tissue,netfile,ctfile,gofile,exprdatafile,overwrite){
 
   if(!exists("coexp.nets"))
-    CoExpNets::initDb()
+    initDb()
 
   if(sum(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one) == 0){
-    cat("Adding new network",tissue,"to the category",which.one,"to the database\n")
-    coexp.nets[nrow(coexp.nets) + 1,] <<- c(which.one,
-                                            tissue,
-                                            netfile,ctfile,gofile,exprdatafile)
+    if(is.null(coexp.nets)){
+      cat("Adding new network",tissue,"to the category",which.one,"to the database\n")
+      coexp.nets[1,] <<- c(which.one,
+                                              tissue,
+                                              netfile,ctfile,gofile,exprdatafile)
+    }else{
+      cat("Adding new network",tissue,"to the category",which.one,"to the database\n")
+      coexp.nets[nrow(coexp.nets) + 1,] <<- c(which.one,
+                                              tissue,
+                                              netfile,ctfile,gofile,exprdatafile)
+    }
+
+
   }else{
     if(overwrite){
       mask = coexp.nets$tissue == tissue & coexp.nets$which.one == which.one
