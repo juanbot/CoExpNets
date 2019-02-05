@@ -75,6 +75,12 @@ addNetworkToDDBB = function(netf,folder,
 
 
 
+#' Title
+#'
+#' @return
+#' @export
+#'
+#' @examples
 getNetworkCategories = function(){
   if(!is.null(coexp.nets))
     return(unique(coexp.nets$which.one))
@@ -138,6 +144,19 @@ loadDDBB = function(filein,outtmp="/tmp/tempddbb.txt"){
 
 #' Title
 #'
+#' @return
+#' @export
+#'
+#' @examples
+initDb = function(){
+  coexp.nets <<- NULL
+  coexp.data <<- NULL
+  coexp.ctype <<- NULL
+  coexp.go <<- NULL
+}
+
+#' Title
+#'
 #' @param which.one The category under which the network is under
 #' @param tissue The name of the network under the category
 #' @param netfile The RDS file produced by getDownstreamNetwork()
@@ -153,7 +172,7 @@ loadDDBB = function(filein,outtmp="/tmp/tempddbb.txt"){
 addNet = function(which.one,tissue,netfile,ctfile,gofile,exprdatafile,overwrite){
 
   if(!exists("coexp.nets"))
-    CoExpNets::initDb(mode="empty")
+    CoExpNets::initDb()
 
   if(sum(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one) == 0){
     cat("Adding new network",tissue,"to the category",which.one,"to the database\n")
