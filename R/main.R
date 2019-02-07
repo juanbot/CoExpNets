@@ -862,7 +862,6 @@ getDownstreamNetwork = function(tissue="mytissue",
   if(is.null(final.net))
     final.net = paste0(job.path,"/","net",tissue,".",
                        net.and.tom$net$beta,".it.",n.iterations,".rds")
-
   outnet = applyKMeans(tissue=tissue,
                                   n.iterations=n.iterations,
                                   net.file=net.and.tom$net,
@@ -879,24 +878,16 @@ getDownstreamNetwork = function(tissue="mytissue",
     else
       saveRDS(net.and.tom$tom,paste0(final.net,".tom.rds"))
   }
-
-  foutnet = NULL
-  foutnet$beta = net.and.tom$net$beta
-  foutnet$type = net.and.tom$net$type
-  foutnet$net = outnet$net
-  foutnet$partitions = outnet$partitions
-  foutnet$cgenes = outnet$cgenes
-  foutnet$discGenes = discGenes
+  outnet$adjacency = net.and.tom$adjacency
+  names(outnet$moduleColors) = colnames(expr.data)
+  outnet$discGenes = discGenes
 
   if(save.tom){
     if(blockTOM)
-      foutnet$tom = paste0(final.net,".tom.")
+      outnet$tom = paste0(final.net,".tom.")
     else
-      foutnet$tom = paste0(final.net,".tom.rds")
+      outnet$tom = paste0(final.net,".tom.rds")
   }
-
-
-
   if(save.plots){
     cat("Generating mod sizes for",final.net,"\n")
     pdf(paste0(final.net,".mod_size.pdf"))
@@ -906,7 +897,7 @@ getDownstreamNetwork = function(tissue="mytissue",
     plotEGClustering(which.one="new",tissue=final.net)
     dev.off()
   }
-  return(foutnet)
+  return(outnet)
 }
 
 plotEGClustering = function(tissue,which.one){
@@ -1250,7 +1241,6 @@ applyKMeans <- function(tissue,
   }
 
   print("The k-means algorithm finished correctly")
-  print(net$moduleColors)
   return(net)
 }
 
@@ -1448,6 +1438,10 @@ getAndPlotNetworkLong <- function(expr.data,beta,
   #Now we can delete adjacency
   print("Deleting adjacency matrix")
   rm(adjacency)
+  adjacency = apply(TOM,2,sum)
+  adjacency = adjacency/length(adjacency)
+  names(adjacency) = colnames(expr.data)
+
   dissTOM = 1-TOM
   rm(TOM)
   print("Created TOM, dissTOM")
@@ -1563,6 +1557,7 @@ getAndPlotNetworkLong <- function(expr.data,beta,
   rownames(net$MEs) <- sample.names
   net$moduleLabels <- moduleLabels
   net$moduleColors <- moduleColors
+  net$adjacency = adjacency
   net$beta = beta
   net$type = net.type
   names(net$moduleColors) <- gene.names
