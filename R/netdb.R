@@ -88,10 +88,9 @@ getNetworkCategories = function(){
 }
 
 findNet = function(which.one,tissue){
-  dir = system.file("", "extdata", package = which.one)
   net = coexp.nets$net[which(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one)]
   if(length(net) > 0)
-    return(paste0(dir,"/",net))
+    return(net)
   return(NULL)
 }
 

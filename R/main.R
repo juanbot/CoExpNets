@@ -10,12 +10,15 @@
 #'
 #' @examples
 milkNet = function(net,folder){
+  netName = NULL
   if(typeof(net) == "character"){
+    netName = gsub(".rds","",basename(net))
     stopifnot(file.exists(net))
     net = readRDS(net)
   }
 
-  netName = gsub(".rds","",basename(net$file))
+  if(is.null(netName))
+    netName = gsub(".rds","",basename(net$file))
   #Print the clusters
   clusters = NULL
   if(is.null(names(net$moduleColors)))
@@ -24,11 +27,14 @@ milkNet = function(net,folder){
              #              stringsAsFactors=F)
   dir.create(folder)
   write.table(clusters,paste0(folder,netName,"_clusters.tsv"),quote=F,row.names=F,col.names=T,sep="\t")
-  adj = list(genes=names(net$moduleColors),adjacency=net$adjacency)
-  write.table(adj,paste0(folder,netName,"_adjacency.tsv"),quote=F,row.names=F,col.names=T,sep="\t")
+  if(!is.null(net$adjacency)){
+    adj = list(genes=names(net$moduleColors),adjacency=net$adjacency)
+    write.table(adj,paste0(folder,netName,"_adjacency.tsv"),quote=F,row.names=F,col.names=T,sep="\t")
+
+  }
 
   if(!is.null(net$go))
-    write.table(net$go,paste0(folder,netName,"_funcAnnotaton.tsv"),quote=F,row.names=F,col.names=T,sep="\t")
+    write.table(net$go,paste0(folder,netName,"_funcAnnotation.tsv"),quote=F,row.names=F,col.names=T,sep="\t")
   else
     cat("No functional annotation to generate for",netName,"\n")
   if(!is.null(net$ct)){
