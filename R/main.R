@@ -350,7 +350,7 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
       library(CoExpNets)
       genes = colnames(datain)
       sampids = rownames(datain)
-      datain = log2(1 + as.matrix(datain))
+      #datain = log2(1 + as.matrix(datain))
       if(mode == "bootstrap"){
         maskdi = which(maskd)
         for(index in maskdi){
