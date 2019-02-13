@@ -121,7 +121,7 @@ findGO = function(which.one,tissue){
 }
 
 findData = function(which.one,tissue){
-  dataset = coexp.nets$data[which(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one)]
+  dataset = coexp.nets$exprdatafile[which(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one)]
   return(dataset) #return(NULL)
 }
 
