@@ -696,14 +696,14 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
       print(net$discGenes)
       print(genes)
       mask = !(genes %in% net$discGenes)
-      print(sum(mask))
-      print(str(TOM))
-      print(str(localTOM))
+      #print(sum(mask))
+      #print(str(TOM))
+      #print(str(localTOM))
       TOM[mask,mask] = TOM[mask,mask] + localTOM
     }else{
       cat("No discarged genes\n")
-      print(str(TOM))
-      print(str(localTOM))
+      #print(str(TOM))
+      #print(str(localTOM))
       TOM = TOM + localTOM
     }
 
@@ -760,7 +760,6 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
   saveRDS(TOM,finalnet$tom)
   finalnet$adjacency = adjacency
   finalnet$moduleColors = outnet$moduleColors
-  print(finalnet$moduleColors)
   finalnet$subnets = allsubnets
 
   outnet = applyKMeans(tissue=tissue,
@@ -769,6 +768,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
                                   expr.data=expr.data)
 
   finalnet$moduleColors = outnet$moduleColors
+  nammes(finalnet$moduleColors) = names(finalnet$adjacency)
   finalnet$MEs = outnet$MEs
   finalnet$mode = mode
   finalnet$cgenes = outnet$cgenes
