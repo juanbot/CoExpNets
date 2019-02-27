@@ -386,7 +386,7 @@ reportOnModule = function(tissue="SNIG",
 
         }
       }else{
-        cell.type.report = unique(getFriendlyNameForColumnCategories(names(cell.type.row),F))
+        cell.type.report = unique(getFriendlyNameForColumnCategories(names(cell.type.row)))
       }
     }
   }
@@ -916,7 +916,7 @@ cellTypeByModule = function(tissue="None",
                      net.name=net.in)
     cat("Done generating new User enrichment\n")
     #}
-    enrichment = read.csv(file.name,stringsAsFactors=F)
+    userEnrichment = read.csv(file.name,stringsAsFactors=F)
 
   }
   if(!use.grey)

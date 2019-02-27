@@ -256,7 +256,7 @@ plotMDS = function(rpkms.net,path,covs,covvars,label,n.mds=-1){
     else
       mask = c(1:ncol(rpkms.net))
     colors = rainbow(length(levels(covs[,covvar])))
-    plotMDS(rpkms.net[,mask],col=colors[as.numeric(covs[,covvar])],
+    limma::plotMDS(rpkms.net[,mask], #col=colors[as.numeric(covs[,covvar])],
             main=paste0("MDS using ",covvar," ",label))
     legend("topright",fill=colors,
            legend=levels(covs[,covvar]))
@@ -1911,6 +1911,33 @@ removeTOM = function(filepref){
   file.remove(paste0(filepref,"_metadata.rds"))
 }
 
+#' Title
+#'
+#' @param prince
+#' @param label
+#' @param smallest
+#' @param note
+#' @param notecol
+#' @param notecex
+#' @param breaks
+#' @param col
+#' @param margins
+#' @param key
+#' @param cexRow
+#' @param cexCol
+#' @param xlab
+#' @param colsep
+#' @param rowsep
+#' @param sepcolor
+#' @param sepwidth
+#' @param Rsquared
+#' @param breaksRsquared
+#' @param main
+#'
+#' @return
+#' @export
+#'
+#' @examples
 princePlot = function (prince, label = colnames(prince$o), smallest = -20,
                              note = F, notecol = "black", notecex = 1,
                              breaks = seq(-20, 0, length.out = 100),
