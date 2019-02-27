@@ -730,7 +730,7 @@ getGProfilerOnNet <- function(net.file,
       genes <- fromEnsembl2GeneName(genes)
     all.genes[[module]] <- genes
   }
-  print(all.genes)
+
   go <- gProfileR::gprofiler(all.genes,
                              correction_method=correction.method,
                              #custom_bg=background,
