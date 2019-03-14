@@ -22,3 +22,22 @@ In the meantime, you can access the tutorials in the package.
 * ![Tutorial for using CoExp networks suite](inst/tutorials/Tutorial_2.md)
 
 * ![Tutorial for preparing expression data before creating the networks](inst/tutorials/Tutorial_3.md)
+
+
+# Credits
+
+The development of this suite of packages and the co-expression network creation is leaded by Juan A. Botía with the help of many people, mainly Mina Ryten from the Ryten Lab but also Jana Vandrovcova, Paola Forabosco, Conceisao Bettencourt, Seb Guelfi, Sonia García-Ruiz.
+
+If you want to check examples of collaborations in which we used CoExpNets for annotation of genes, their function, cell type and main co-expressed genes, check the following PUBMED references
+
+* <https://www.ncbi.nlm.nih.gov/pubmed/30328509>
+* <https://www.ncbi.nlm.nih.gov/pubmed/29365066>
+* <https://www.ncbi.nlm.nih.gov/pubmed/29127725>
+* <https://www.ncbi.nlm.nih.gov/pubmed/28899015>
+* <https://www.ncbi.nlm.nih.gov/pubmed/28575651>
+* <https://www.ncbi.nlm.nih.gov/pubmed/26912063>
+* <https://www.ncbi.nlm.nih.gov/pubmed/26707700>
+
+And if we use the resource please cite us, with the GitHub URL and also this paper
+
+<https://www.ncbi.nlm.nih.gov/pubmed/28403906>
