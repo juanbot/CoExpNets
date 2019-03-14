@@ -148,7 +148,9 @@ fromAny2GeneName = function(genes){
 
 fromXtIDToGeneSymbols19K = function(xids){
 
-  trans.table <- read.csv(paste0("supplementary/rdsnets/micro19K/annot_19K.csv"),stringsAsFactors=F)
+  trans.table <- read.csv(paste0(system.file("", "", package = "CoExpNets"),
+                                 "annot_19K.csv"),
+                          stringsAsFactors=F)
   gene.symbols = trans.table$Gene_Symbol[match(xids,trans.table$XtID)]
   gene.symbols[is.na(gene.symbols)] = xids[is.na(gene.symbols)]
   return(gene.symbols)
