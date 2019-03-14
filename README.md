@@ -14,20 +14,6 @@ devtools::install_github('juanbot/CoExpNets')
 
 And that will be all. More help to come soon.
 In the meantime, you can access the tutorials in the package.
-title: "Tutorial III: From the residuals to the generation of a co-expression network"
-author: "Juan A. Botía, juanbot@um.es, @juanBotiaBlaya"
-date: "26/02/2018"
-output: 
-  pdf_document:
-    toc: yes
-    fig_caption: yes
-  html_document:
-    toc: yes
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
 
 # Tutorial I, how to create your own coExpNetwork 
 
