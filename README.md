@@ -18,3 +18,7 @@ In the meantime, you can access the tutorials in the package.
 # Available tutorials
 
 * ![Tutorial for creation of CoExp networks](inst/tutorials/Tutorial_1.md)
+
+* ![Tutorial for using CoExp networks suite](inst/tutorials/Tutorial_2.md)
+
+* ![Tutorial for preparing expression data before creating the networks](inst/tutorials/Tutorial_3.md)

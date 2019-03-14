@@ -1,97 +1,59 @@
----
-title: "Tutorial I: Introduction to co-expression networks with CoExp"
-author: "Juan A. Botía, juanbot@um.es, @juanBotiaBlaya"
-output:
-  pdf_document:
-    toc: yes
-    fig_caption: yes
-  html_document:
-    toc: yes
----
 
-# Introduction
+# Introduction to using co-expression networks with CoExp suite
 
-This document is an introduction to co-expression networks. We will learn how to use co-expression networks (GCNs). A gene co-expression network, as we use them in CoExp, is a network of genes created with the WGCNA (Weighted Co-expression Networks) R package, see <https://labs.genetics.ucla.edu/horvath/CoexpressionNetwork/Rpackages/WGCNA/> in combination with the km2gcn R package, see <https://www.ncbi.nlm.nih.gov/pubmed/28403906>. 
+This document is an introduction to co-expression networks. We will learn how to use co-expression networks (GCNs). A gene co-expression network, as we use them in CoExp, is a network of genes created with the WGCNA (Weighted Co-expression Networks) R package, see <https://labs.genetics.ucla.edu/horvath/CoexpressionNetwork/Rpackages/WGCNA/> in combination with the km2gcn R package, see <https://www.ncbi.nlm.nih.gov/pubmed/28403906>. This package has been materialised into the CoExpNets package, hosted in GitHub, <http://github.com/juanbot/CoExpNets>. 
 
-This document has two purposes. The first one is to serve as a tutorial on how to create and annotate GCNs from gene expression data adequately cleaned for such purpose. The second one is to illustrate how to use the database of GCNs that come with the resource for research purposes. In the following section we explain what GCNs are awailable, how to use them and how we can create a GCN from scratch. The next to the following section explains how to clean data to get it ready for GCN creation. This resource has, in its present form, three main parts: R code, processed resources and meta-data.
+This document has two purposes. The first one is to serve as a tutorial on how to create and annotate GCNs from gene expression data adequately cleaned for such purpose. For this, we will need the CoExpNets package, that can be installed as follows
 
-## Folders
-
-This distribution can be found under the folder `coexp`. Under this folder we can find the following R files
-
-* `coexpression.R` is the core of functions to generate and access GCNs. Source this file to start using the whole distribution (see below)
-
-* `netdb.R` includes the necessary code to access the GCNs of the resource and the gene expression data necessary to create such resource.
-
-* `naming.R` is a set of helper functions useful to convert between different naming schemes for genes.
-
-
-* `geneannot.R` is a set of functions to annotate GCN gene modules and to access such annotations.
-
-Under `coexp` folder we can find the following folders
-
-* `data` is a folder that holds all resources (CGNs and expression data), gene marker sets and network annotation files.
-
-* `results` includes all results generated as a consequence of runing the code chunks of this manual.
-
-* `examples` will include some interesting examples we use at other tutorials.
-
-
-
-# CoExp: repository of co-expression networks and gene expression profiling
-
-## What can we find at CoExp?
-
-If we are at the Bioinformatics Master server, we have to do this, from the R console if we want to start using the software.
-
-```{r eval=FALSE}
-source("/home/biomaster/tia1718/tutorialesR/coexp/coexpression.R",chdir=T)
-coexp.initDb("NoFull")
+```r
+devtools::install_github("juanbot/CoExpNets")
 ```
 
-And now we are ready to start.
+The second one is to illustrate how to use the database of GCNs that come in separate resources, for research purposes. Currently, there are three packages available, `CoExpGTEx`, `CoExp10UKBEC` and `CoExpROSMAP` with 47, 10 and 4 co-expression networks respectively. They can be found at <http://github.com/juanbot/CoExpGTEx>, <http://github.com/juanbot/CoExp10UKBEC> and <http://github.com/juanbot/CoExpROSMAP> respectively.
 
-If you download it to your own computer, you have to edit `gdp.coexp()` function at `coexpression.R` file to update the route to the file `coexpression.R`.
-For example, if your route to the file is is "/home/alumno/tutorialesR/coexp/", then the function should be.
 
-```{r eval=FALSE}
-gdp.coexp = function(){
-	return("/home/alumno/tutorialesR/coexp/")
-}
+# CoExpNets: resource for co-expression networks and gene expression profiling
+
+For the rest of things we´ll use here, we need to install the ROSMAP package, together with CoExpNets, so besides installing CoExpNets as indicated above, we have to do 
+
+```r
+devtools::install_github("juanbot/CoExpROSMAP")
 ```
 
-And then we can start using the code from the R console by doing this
+No we can start using the software by doing
 
-```{r eval=FALSE}
-source("/home/alumno/tutorialesR/coexp/coexpression.R",chdir=T)
-coexp.initDb("NoFull")
+```r
+library(CoExpNets)
+library(CoExpROSMAP)
+CoExpROSMAP::initDb()
 ```
+
+And now we are ready to start. A number of networks have been added to the database.
 
 
 If you want to compile this documentation itself in your computer in order to check whether your installation was correct, then the rest of chunks of code for this documentation will be run in order for the documentation to be generated so please change the first line of the chunk above accordingly before compiling again.
 
-```{r}
-source("~/Dropbox/clases/bioinf2017/tia1718/tutorialesR/coexp/coexpression.R",chdir=T)
-coexp.initDb("NoFull")
-for(data.family in names(coexp.data)){
+```r
+for(data.family in getNetworkCategories()){
 	cat(paste0("Family of gene expression dataset ",data.family," available\n"))
-	for(expr.data in names(coexp.data[[data.family]]))
-		cat(paste0("Gene expression profiling dataset for tissue ",expr.data," available\n"))
+  tissues = getAvailableNetworks(data.family)
+	for(tissue in tissues)
+		cat(paste0("Gene expression profiling dataset for tissue ",tissue,"\n is ",
+		           getExprDataFromTissue(which.one=data.family,tissue=tissue,only.file = T)," available\n"))
 }
 ```
 
 In order to understand this we need to check the page <https://www.synapse.org/#!Synapse:syn3219045> for information on the ROS/MAP study and how to access its data. This is a study on multi-omics data from frontal cortex samples of donors with various levels of severity of Alzheimer's disease.
 
 Let's get the sample covariates so we can have a look at the values for the samples.
-```{r, tidy=TRUE}
-library(stringr)
+```r
 #In ROS/MAP we have four networks, one for all the samples and three different 
 #networks segreating by different levels of severity for cognitive decline 
 #(not AD, probable AD and surely AD, AD stands for Alzheimer's disease)
-names(coexp.nets[["rosmap"]])
+getAvailableNetworks("CoExpROSMAP")
 #One of the covariates of this dataset is cognitive decline (cogdx) and it is value
 #between 0 and 5 being 5 highest severity
-covs = coexp.getCovariates(tissue="all",which.one="rosmap")
+covs = CoExpROSMAP::getCovariates(tissue="allsamples",which.one="CoExpROSMAP")
 oldpar = par()
 par(mfrow=c(2,2))
 barplot(table(covs$gender),main="Gender in ROS/MAP")
@@ -103,18 +65,23 @@ par(oldpar)
 
 
 In the same way, we can check that there is a co-expression network available for each of these datasets. 
-```{r tidy=TRUE}
-for(net.family in names(coexp.nets)){
-	cat(paste0("Family of co-expression networks ",net.family," available\n"))
-	for(net in names(coexp.nets[[net.family]]))
-		cat(paste0("Co-expression network for tissue ",net," available\n"))
+```r
+for(data.family in getNetworkCategories()){
+	cat(paste0("Family of gene expression dataset ",data.family," available\n"))
+  tissues = getAvailableNetworks(data.family)
+	for(tissue in tissues)
+		cat(paste0("Co-expression network for tissue ",tissue,"\n is ",
+		           getNetworkFromTissue(which.one=data.family,
+		                                tissue=tissue,only.file = T),
+		           " available\n"))
 }
 ```
+
 ## Accessing gene expression data
 
-So, for example, if we wanted to access the gene expression profiling of `cogdxad` tissue, we can do
-```{r tidy=TRUE}
-expr.data = coexp.getExprDataFromTissue(which.one="rosmap",tissue="cogdxad")
+So, for example, if we wanted to access the gene expression profiling of `ad` tissue, we can do
+```r
+expr.data = getExprDataFromTissue(which.one="CoExpROSMAP",tissue="ad")
 cat("The dataset has ",dim(expr.data)," samples and genes respectively\n")
 cat("First gene names are",paste0(colnames(expr.data)[1:3],collapse=","),"\n")
 cat("First sample IDs are",paste0(rownames(expr.data)[1:3],collapse=", "),"\n")
@@ -123,13 +90,13 @@ cat("First sample IDs are",paste0(rownames(expr.data)[1:3],collapse=", "),"\n")
 Note that gene IDs depend on the gene expression profiling family. For ROS/MAP all gene names are [Ensembl](http://www.ensembl.org/index.html) IDs. We keep the familiy dependent sample ID too when possible.
 
 We can convert between Ensembl IDs and gene symbols by using 
-```{r tidy=TRUE,hold=TRUE}
-source("naming.R")
-coexp.fromEnsembl2GeneName(colnames(expr.data)[1:5])
+```r
+fromEnsembl2GeneName(gsub("\\.[0-9]+$","",colnames(expr.data)[1:5]))
 ```
 And back to Ensembl IDs
-```{r tidy=TRUE,hold=TRUE}
-coexp.fromGeneName2Ensembl(coexp.fromEnsembl2GeneName(colnames(expr.data)[1:5]))
+```r
+fromGeneName2Ensembl(fromEnsembl2GeneName(gsub("\\.[0-9]+$","",
+                                               colnames(expr.data)[1:5])))
 ```
 Note that this is done by using internal files. The most reliable manner in which we can manipulate Ensembl IDs is going directly to biomart. But at the moment this falls outside of the scope of this tutorial.
 
@@ -137,8 +104,8 @@ Note that this is done by using internal files. The most reliable manner in whic
 
 We can access a network and get its genes
 
-```{r tidy=TRUE,hold=TRUE}
-net = coexp.getNetworkFromTissue(which.one="rosmap",tissue="cogdxad")
+```r
+net = getNetworkFromTissue(which.one="CoExpROSMAP",tissue="ad")
 cat("The network has ",length(unique(net$moduleColors))," modules\n")
 cat("The module size is\n")
 print(table(net$moduleColors))
@@ -149,65 +116,67 @@ cat("The 1st gene's ID is ",names(net$moduleColors)[1]," and it belongs to modul
 Or we can visually check their corresponding size and color as follows
 
 ```{r}
-coexp.plotModSizes(tissue="cogdxad",which.one="rosmap")
+CoExpNets::plotModSizes(tissue="ad",which.one="CoExpROSMAP")
 ```
 
 
 
 We can also access network properties by gene, e.g. the module membership of each gene within its module by using
 
-```{r tidy=TRUE,hold=TRUE}
-source("coexpression.R")
-expr.data = coexp.getExprDataFromTissue(which.one="rosmap",tissue="cogdxad")
-coexp.getMM(which.one="rosmap",tissue="cogdxad",genes=colnames(expr.data)[1:5])
+```r
+expr.data = getExprDataFromTissue(which.one="CoExpROSMAP",tissue="ad")
+getMM(which.one="CoExpROSMAP",tissue="ad",
+      genes=gsub("\\.[0-9]+$","",colnames(expr.data)[1:5]))
 ```
+
 Or we can represent an histogram with all MM values for module yellow
 
-```{r tidy=TRUE,hold=TRUE}
-source("naming.R")
-mms = coexp.getMM(which.one="rosmap",tissue="cogdxad",
-                  genes=coexp.getGenesFromModule(which.one="rosmap",
-                                                 tissue="cogdxad",module="yellow"))
+```r
+mms = getMM(which.one="CoExpROSMAP",tissue="ad",
+                  genes=getGenesFromModule(which.one="CoExpROSMAP",
+                                                 tissue="ad",
+                                           module="yellow"))
 hist(mms,main="MM values for black module in ROS/MAP AD subjects GCN")
 ```
 
 We can also get the top 5 Hub genes for that very same module
 
-```{r tidy=TRUE,hold=TRUE}
-source("naming.R")
-coexp.fromEnsembl2GeneName(names(mms[order(mms,decreasing=T)][1:5]))
+```r
+fromEnsembl2GeneName(names(mms[order(mms,decreasing=T)][1:5]))
 ```
 
 We can also access gene information by modules. What are the modules available in the AD subjects GCN?
 
-```{r}
-source("netdb.R")
-coexp.getModulesFromTissue(which.one="rosmap",tissue="cogdxad")
+```r
+getModulesFromTissue(which.one="CoExpROSMAP",tissue="ad")
 ```
 
 Which are the genes within the tan module?
 
-```{r}
-genes = coexp.getGenesFromModule(which.one="rosmap",tissue="cogdxad",
+```r
+genes = getGenesFromModule(which.one="CoExpROSMAP",
+                           tissue="ad",
                                  module="tan")
 cat("Tan module has",length(genes),"genes\n")
 ```
-WGCNA has a nice features and this is that one can visually inspect module similarities in terms of gene expression by using the eigengene. An eigengene is the 1st PCA component of expression and we can construct a dendrogram and see how the eigengenes are organised within such graph. Modules hanging from the same root will be more similar than others far away in the dendrogram.
-```{r}
+
+WGCNA has a nice feature and this is that one can visually inspect module similarities in terms of gene expression by using the eigengene. An eigengene is the 1st PCA component of expression and we can construct a dendrogram and see how the eigengenes are organised within such graph. Modules hanging from the same root will be more similar than others far away in the dendrogram.
+
+```r
 #We can get the eigengenes in the form of a matrix with samples in rows and columns for modules 
 #There is one eigengene for each module
-tissue = "cogdxad"
-which.one = "rosmap"
-egs = coexp.getNetworkEigengenes(which.one=which.one,tissue=tissue)
+tissue = "ad"
+which.one = "CoExpROSMAP"
+egs = getNetworkEigengenes(which.one=which.one,tissue=tissue)
 cat(tissue,"network was obtained from",nrow(egs),
     "samples and has",ncol(egs),"modules\n")
 #And now we plot the EGs
-coexp.plotEGClustering(which.one=which.one,tissue=tissue)
+plotEGClustering(which.one=which.one,tissue=tissue)
 ```
 
 O we can simply plot its correlation
 
-```{r}
+```r
 library(corrplot)
 corrplot(cor(egs),tl.srt=45, 
          tl.col="black",
@@ -221,42 +190,49 @@ corrplot(cor(egs),tl.srt=45,
 Note that the correlation plot will apply a clustering process too so the modules with highest correlation will appear together. There will be a correspondence between closeness at the dendrogramm and closeness at the triangular matrix (check for example thistle1, darkmagenta and greenyellow modules in both plots).
 
 Finally, we can check the relation of modules with their covariates.
-```{r, tidy=TRUE}
+```r
+library(WGCNA)
 #We whole network has all samples and some modules will capture differences between
 #genes in cases and controls, lets see the whole picture
-covlist = colnames(coexp.getCovariates(tissue="all",which.one="rosmap"))
-coexp.corWithCatTraits(which.one="rosmap",tissue="all",covlist=covlist)
+covlist = colnames(getCovariates(tissue="allsamples",
+                                 which.one="CoExpROSMAP"))
+corWithCatTraits(which.one="CoExpROSMAP",tissue="allsamples",
+                 covlist=covlist,covs=getCovariates(tissue="allsamples"))
 ```
 
 So interesting module for understanding AD would be those that show any significant relation with assessed states of cognitive decline, e.g. darkmagenta, darkturquoise and royalblue. Note how PMI, age, batch, gender and race show no correlation whatsoever as they were applied for correction of the gene expression before creating the network.
-
-
 
 ##Making sense of the networks
 
 Thanks to annotation of the modules, we can obtain information on what the networks reflect in terms of the biology of the genes. There are two types of annotations. But both of them work at the module level. Given a network compound of modules $m_1, m_2, ..., m_n$, the unit of annotation is the module. In this regard, each module $m_i$ will be annotated from enrichment analyses against manually curated ontologies like the Gene Ontology, KEGG and REACTOME, but also with cell type enrichment by using both in-house built cell markers and those coming from WGCNA.
 
 Let us use, in this section, the ROS/MAP "all" network.
-```{r tidy=TRUE,hold=TRUE}
-net = coexp.getNetworkFromTissue(which.one="rosmap",tissue="all")
+
+```r
+net = getNetworkFromTissue(which.one="CoExpROSMAP",tissue="allsamples")
 cat("Network built with",length(net$moduleColors),"genes and",nrow(net$MEs),"samples\n")
 cat("The list of modules is",paste0(unique(net$moduleColors),collapse=", "),"\n")
 ```
+
 Let us focus on the `royalblue` module. What is the enrichment of that module in terms of the biology of its genes?
-```{r, echo=FALSE,message=FALSE,warning=FALSE}
-source("geneannot.R")
-report=coexp.reportOnModule(tissue="all",which.one="rosmap",module="turquoise",ctcollapse=F,how.many=30)
+
+```r
+report=CoExpNets::reportOnModule(tissue="allsamples",
+                      which.one="CoExpROSMAP",
+                      module="turquoise",
+                      ctcollapse=F,
+                      how.many=30)
 ```
 
 Now we can access the report's fields
 
-```{r tidy=TRUE,hold=TRUE}
+```r
 names(report)
 ```
 
 This is a comprehensive report on a module in which we can access a lot of information that can tell us about gene set function 
 
-```{r tidy=TRUE,hold=TRUE}
+```r
 #How many genes do we have in the module
 report$size
 #What are the top five annotations for that module coming from the Gene Ontology
@@ -267,8 +243,10 @@ The module hs 359 genes, and the annotation DB based enrichment has 7 significan
 
 All in all, we can access all the DB based annotation separately as in
 
-```{r tidy=TRUE,hold=TRUE}
-report=coexp.functionalReportOnModule(tissue="all",which.one="rosmap",module="turquoise")
+```r
+report=functionalReportOnModule(tissue="allsamples",
+                                which.one="CoExpROSMAP",
+                                module="turquoise")
 dim(report)
 names(report)
 table(report$domain)
@@ -276,7 +254,7 @@ table(report$domain)
 
 As we see, there are 26 terms, 18 coming from the Gene Ontology Biological Process database, 4 from KEGG and 4 from REACTOME pathway databases. So for example, in order to get information about REACTOME and KEGG terms
 
-```{r tidy=TRUE,hold=TRUE}
+```r
 report[report$domain %in% c("rea","keg"),c("term.id","term.name","p.value")]
 ```
 
@@ -284,7 +262,8 @@ report[report$domain %in% c("rea","keg"),c("term.id","term.name","p.value")]
 This data shows the corresponding REACTOME pathways that come up from the analysis, check [gProfileR](https://cran.r-project.org/web/packages/gProfileR/index.html) package documentation.
 
 Finally, we can also generate a plot for the cell type
-```{r}
-results = coexp.cellTypeByModule(tissue="all",which.one="rosmap",plot.file=NULL)
+
+```r
+results = cellTypeByModule(tissue="allsamples",which.one="CoExpROSMAP",do.plot=T)
 ```
 
