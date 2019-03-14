@@ -26,7 +26,7 @@ In the meantime, you can access the tutorials in the package.
 
 # Credits
 
-The development of this suite of packages and the co-expression network creation is leaded by Juan A. Botía with the help of many people, mainly Mina Ryten from the Ryten Lab but also Jana Vandrovcova, Paola Forabosco, Conceisao Bettencourt, Seb Guelfi, Sonia García-Ruiz.
+The development of this suite of packages is leaded by Juan A. Botía. Co-expression network creation is leaded by Juan A. Botía and Mina Ryten from the Ryten Lab but many people contributed in some way including Jana Vandrovcova, Mar Matarin, Paola Forabosco, Conceisao Bettencourt, Seb Guelfi, Sonia García-Ruiz.
 
 If you want to check examples of collaborations in which we used CoExpNets for annotation of genes, their function, cell type and main co-expressed genes, check the following PUBMED references
 
