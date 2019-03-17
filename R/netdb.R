@@ -95,10 +95,8 @@ findNet = function(which.one,tissue){
 }
 
 findCT = function(which.one,tissue){
-  file = paste0(findNet(which.one=which.one,tissue=tissue),".celltype.csv")
-  if(file.exists(file))
-    return(file)
-  return(NULL)
+  ct = coexp.nets$ctfile[which(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one)]
+  return(ct)
 }
 
 findUserCT = function(which.one,tissue){
@@ -109,15 +107,8 @@ findUserCT = function(which.one,tissue){
 }
 
 findGO = function(which.one,tissue){
-  file = paste0(findNet(which.one=which.one,tissue=tissue),"_gprofiler.csv")
-  if(file.exists(file))
-    return(file)
-  file = paste0(findNet(which.one=which.one,tissue=tissue),"_gprof.csv")
-  if(file.exists(file))
-    return(file)
-
-
-  return(NULL)
+  go = coexp.nets$gofile[which(coexp.nets$tissue == tissue & coexp.nets$which.one == which.one)]
+  return(go)
 }
 
 findData = function(which.one,tissue){
