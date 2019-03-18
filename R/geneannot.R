@@ -289,7 +289,7 @@ reportOnModule = function(tissue="SNIG",
                           cell.type.threshold=0.05,
                           ctcollapse=T){
 
-  tmp.report = reportGet(which.one,tissue,module)
+  tmp.report = reportGet(experiment=which.one,tissue=tissue,module=module)
   if(!is.null(tmp.report))
     return(tmp.report)
 
@@ -299,6 +299,7 @@ reportOnModule = function(tissue="SNIG",
     pd.genes = read.table(paste0(system.file("", "", package = "CoExpNets"),"/pd_genes.txt"),
                           stringsAsFactors=F,header=F)$V1
     genes.in.module = getGenesFromModule(tissue=tissue,which.one=which.one,module=module)
+    stopifnot(!is.null(genes.in.module))
     if(substr(genes.in.module[1],1,4) == "ENSG")
       genes.in.module = fromEnsembl2GeneName(genes.in.module)
     mask = pd.genes %in% genes.in.module
@@ -308,7 +309,7 @@ reportOnModule = function(tissue="SNIG",
       pd.genes = "void"
   }
   go = getGOFromTissue(which.one=which.one,tissue=tissue)
-  cat("done GO")
+  cat("done GO\n")
 
   p.values <- go$p.value[go$query.number == module & (go$domain %in% "BP")]
   terms <- go$term.name[go$query.number == module & (go$domain %in% "BP")]
@@ -360,13 +361,13 @@ reportOnModule = function(tissue="SNIG",
 
   cat("Now cell type")
   #We include cell types here
-  cell.types = cellTypeByModule(tissue=tissue,do.plot=F,
-                                which.one=which.one,
-                                return.processed=F)
+  cell.types = getCellTypeFromTissue(which.one=which.one,tissue=tissue)
+
+
   cell.type.report = "void"
   if(any(colnames(cell.types) %in% module)){
     cell.types = cell.types[order(cell.types[,module],decreasing=F),]
-    cell.type.row = which(cell.types[,module] <= cell.type.threshold)
+    cell.type.row = rownames(cell.types)[which(cell.types[,module] <= cell.type.threshold)]
     if(length(cell.type.row) > 0){
       cell.type.report = NULL
       if(!simple.cell.types){
@@ -374,11 +375,11 @@ reportOnModule = function(tissue="SNIG",
         for(i in 1:length(cell.type.row)){
           if(ctcollapse)
             cell.type.report = paste0(cell.type.report," ",
-                                      getFriendlyNameForColumnCategories(names(cell.type.row)[i]),
+                                      getFriendlyNameForColumnCategories(cell.type.row[i]),
                                       " (p-value ",signif(cell.types[cell.type.row[i],module],4),"). ")
           else
             cell.type.report = c(cell.type.report,
-                                 paste0(getFriendlyNameForColumnCategories(names(cell.type.row)[i]),
+                                 paste0(getFriendlyNameForColumnCategories(cell.type.row[i]),
                                         " (p-value ",signif(cell.types[cell.type.row[i],module],4),")"))
 
         }
@@ -888,16 +889,13 @@ cellTypeByModule = function(tissue="None",
   if(is.null(net.in)){
     net = getNetworkFromTissue(tissue=tissue,which.one=which.one)
     modules = getModulesFromTissue(tissue,which.one)
-    enrf = findCT(which.one=which.one,tissue=tissue)
-    if(file.exists(enrf))
-      enrichment = read.csv(enrf)
-    else
-      stop(paste0("File",enrf,"not found\n"))
+    enrichment = getCellTypeFromTissue(which.one=which.one,tissue=tissue)
     enrf = findUserCT(which.one=which.one,tissue=tissue)
-    if(file.exists(enrf))
-      userEnrichment = read.csv(enrf)
-    else
-      stop(paste0("File",enrf,"not found\n"))
+    userEnrichment = data.frame()
+    if(!is.null(enrf)){
+      if(file.exists(enrf))
+        userEnrichment = read.csv(enrf)
+    }
     is.any.network = F
   }else{
     if(typeof(net.in) == "character")
@@ -933,16 +931,19 @@ cellTypeByModule = function(tissue="None",
   colnames(cell.type.data) = modules
 
   #WGCNA enrichment
-  for(module in modules){
-    i = match(module,modules)
-    for(cell.type in coexp.cell.types){
-      j = match(cell.type,coexp.cell.types)
-      p.val = as.numeric(userEnrichment$CorrectedPvalues[userEnrichment$InputCategories %in% module &
-                                                           userEnrichment$UserDefinedCategories %in% coexp.cell.categories[j]])
-      if(length(p.val) > 0)
-        cell.type.data[j,i] = p.val #-log10(p.val)
+  if(nrow(userEnrichment) > 0){
+    for(module in modules){
+      i = match(module,modules)
+      for(cell.type in coexp.cell.types){
+        j = match(cell.type,coexp.cell.types)
+        p.val = as.numeric(userEnrichment$CorrectedPvalues[userEnrichment$InputCategories %in% module &
+                                                             userEnrichment$UserDefinedCategories %in% coexp.cell.categories[j]])
+        if(length(p.val) > 0)
+          cell.type.data[j,i] = p.val #-log10(p.val)
+      }
     }
   }
+
   input.file.names = c(paste0(system.file("", "cell_type_TableS1.csv", package = "CoExpNets"),"/",
                               coexp.ukbec.cell.files),
                        paste0(system.file("", "cell_type_TableS1.csv", package = "CoExpNets"),"/",
@@ -951,6 +952,7 @@ cellTypeByModule = function(tissue="None",
 
   last.cell.types = c(coexp.ukbec.cell.types,colnames(external.ref))
 
+  if(nrow(userEnrichment) > 0)
   for(i in 1:nrow(userEnrichment)){
     #print(enrichment)
     module = userEnrichment$InputCategories[i]

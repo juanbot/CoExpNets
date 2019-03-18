@@ -457,8 +457,16 @@ getCellTypeFromTissue = function(tissue="SNIG",which.one="rnaseq",module=NULL){
 
   ctfile = findCT(which.one,tissue)
   if(length(ctfile)){
-    if(length(grep(".csv$",ctfile)) > 0)
+    if(length(grep(".csv$",ctfile)) > 0){
       ct = data.frame(read.csv(ctfile,stringsAsFactors=F))
+      mask = duplicated(ct$X)
+      if(sum(mask)){
+        ct$X[mask] = paste0(ct$X[mask],"_1")
+      }
+      rownames(ct) = ct$X
+      ct$X = NULL
+    }
+
     else
       ct = data.frame(read.delim(ctfile,stringsAsFactors=F))
 

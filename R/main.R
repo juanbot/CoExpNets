@@ -1978,3 +1978,20 @@ princePlot = function (prince, label = colnames(prince$o), smallest = -20,
             }, notecol = notecol, notecex = notecex)
 }
 
+
+testCoExpNetworks = function(){
+  if(!exists("coexp.nets"))
+    return(NULL)
+
+  categories = unique(coexp.nets$which.one)
+  for(category in categories){
+    tissues = getAvailableNetworks(category=category)
+    for(tissue in tissues){
+      lapply(getModulesFromTissue(tissue=tissue,which.one=category),
+             function(x){ reportOnModule(tissue=tissue,which.one=category,
+                                         module=x)})
+    }
+  }
+
+  cat("Success!!\n")
+}
