@@ -439,7 +439,7 @@ getGOFromTissues = function(tissues,which.ones,modules){
 getGOFromTissue = function(tissue="SNIG",which.one="rnaseq",module=NULL){
   gofile = findGO(which.one,tissue)
   if(length(gofile)){
-    if(grep(".csv$",gofile) > 0)
+    if(length(grep(".csv$",gofile)) > 0)
       go = read.csv(gofile,stringsAsFactors=F)
     else
       go = read.delim(gofile,stringsAsFactors=F)
@@ -457,7 +457,7 @@ getCellTypeFromTissue = function(tissue="SNIG",which.one="rnaseq",module=NULL){
 
   ctfile = findCT(which.one,tissue)
   if(length(ctfile)){
-    if(grep(".csv$",ctfile) > 0)
+    if(length(grep(".csv$",ctfile)) > 0)
       ct = data.frame(read.csv(ctfile,stringsAsFactors=F))
     else
       ct = data.frame(read.delim(ctfile,stringsAsFactors=F))
