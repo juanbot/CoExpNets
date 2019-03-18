@@ -328,7 +328,7 @@ getNetworkFromTissue = function(tissue="SNIG",
     return(net)
   }
 
-  file = findNet(which.one,tissue)
+  file = findNet(which.one=which.one,tissue=tissue)
   if(is.null(file))
     return(NULL)
   cat("Reading from",file,"\n")

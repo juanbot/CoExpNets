@@ -293,8 +293,6 @@ reportOnModule = function(tissue="SNIG",
   if(!is.null(tmp.report))
     return(tmp.report)
 
-  #cat("Report for",module, which.one,tissue,"doesn't exist already\n")
-  gprof.file = findGO(which.one=which.one,tissue=tissue)
 
   pd.genes = "void"
   if(include.pd){
@@ -309,8 +307,7 @@ reportOnModule = function(tissue="SNIG",
     else
       pd.genes = "void"
   }
-  cat("Reading GO",gprof.file)
-  go <- read.csv(gprof.file,stringsAsFactors=FALSE)
+  go = getGOFromTissue(which.one=which.one,tissue=tissue)
   cat("done GO")
 
   p.values <- go$p.value[go$query.number == module & (go$domain %in% "BP")]
