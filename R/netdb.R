@@ -42,12 +42,12 @@ addNetworkToDDBB = function(netf,folder,
 
   if(do.go)
     go = getGProfilerOnNet(net.file=netf,
-                                filter=filter,
-                                ensembl=ensembl,
-                                exclude.iea=exclude.iea,
-                                correction.method=correction.method,
+                           filter=filter,
+                           ensembl=ensembl,
+                           exclude.iea=exclude.iea,
+                           correction.method=correction.method,
                            organism=organism,
-                                out.file=out.file)
+                           out.file=out.file)
   else
     out.file = ""
 
@@ -439,10 +439,13 @@ getGOFromTissues = function(tissues,which.ones,modules){
 getGOFromTissue = function(tissue="SNIG",which.one="rnaseq",module=NULL){
   gofile = findGO(which.one,tissue)
   if(length(gofile)){
+    if(grep(".csv$",gofile) > 0)
       go = read.csv(gofile,stringsAsFactors=F)
-      if(!is.null(module))
-        return(go[go$query.number == module,])
-      return(go)
+    else
+      go = read.delim(gofile,stringsAsFactors=F)
+    if(!is.null(module))
+      return(go[go$query.number == module,])
+    return(go)
   }
 
   cat(paste0("When getting the network GO for tissue ",tissue," we don't know ",
@@ -454,14 +457,18 @@ getCellTypeFromTissue = function(tissue="SNIG",which.one="rnaseq",module=NULL){
 
   ctfile = findCT(which.one,tissue)
   if(length(ctfile)){
+    if(grep(".csv$",ctfile) > 0)
       ct = data.frame(read.csv(ctfile,stringsAsFactors=F))
-      if(!is.null(module)){
-          ctvec = ct[,module]
-          names(ctvec) = ct[,1]
-        return(ctvec)
-      }
+    else
+      ct = data.frame(read.delim(ctfile,stringsAsFactors=F))
 
-      else return(ct)
+    if(!is.null(module)){
+      ctvec = ct[,module]
+      names(ctvec) = ct[,1]
+      return(ctvec)
+    }
+
+    else return(ct)
   }
 
 
