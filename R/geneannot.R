@@ -107,18 +107,42 @@ reportOnGenes = function(tissue,
     gene = en.gene
     cat("Working on gene",gene,genes[which(en.genes %in% gene)],"\n")
     mod = net$moduleColors[names(net$moduleColors) == en.gene]
+    mmmask = mms[names(net$moduleColors) == en.gene]
 
-    if(length(mod) >= 1){ #} | length(putm.mod) > 1){
+    #mod = unique(mod)
+    if(length(mod) >= 1){
       cat("Gene found in module",mod,"in ",tissue,"\n")
-      report = reportOnModule(tissue,mod,
-                              which.one=which.one,
-                              include.pd=include.pd)
-      mm = mms[names(mms) == en.gene]
-      gene = gene.names[en.genes == en.gene]
-      report = c(gene = gene,
-                 ensgene = en.gene,
-                 mm = signif(as.numeric(mm),4),
-                 report)
+      for(i in 1:length(mod)){
+        report = reportOnModule(tissue,mod[i],
+                                which.one=which.one,
+                                include.pd=include.pd)
+        mm = mmmask[i]
+        gene = gene.names[en.genes == en.gene]
+        report = c(gene = gene,
+                   ensgene = en.gene,
+                   mm = signif(as.numeric(mm),4),
+                   report)
+
+        if(!silent){
+          print(paste0("Gene ",gene, " is in ",tissue," in ",mod, " (MM ",
+                       mm,")"))
+          print(paste0("Report for module ",mod))
+          print(report)
+        }
+
+        #Get the evidence for cell specific genes based on WGCNA userLists
+        wgcna.cell.cats = getFriendlyNameForCategories(getCategoriesForGene(gene))
+        if(length(wgcna.cell.cats) == 0){
+          wgcna.cell.cats = "void"
+        }
+
+        if(i > 1)
+          final.report[[paste0(gene,"_version_",i)]] = report
+        else
+          final.report[[gene]] = report
+      }
+
+
 
     }else{
       cat("Gene not found in",tissue," gene set",which.one,"\n")
@@ -128,20 +152,7 @@ reportOnGenes = function(tissue,
     }
 
 
-    if(!silent){
-      print(paste0("Gene ",gene, " is in ",tissue," in ",mod, " (MM ",
-                   mm,")"))
-      print(paste0("Report for module ",mod))
-      print(report)
-    }
 
-    #Get the evidence for cell specific genes based on WGCNA userLists
-    wgcna.cell.cats = getFriendlyNameForCategories(getCategoriesForGene(gene))
-    if(length(wgcna.cell.cats) == 0){
-      wgcna.cell.cats = "void"
-    }
-
-    final.report[[gene]] = report
   }
   #And now we add the fisher exact test results
 
