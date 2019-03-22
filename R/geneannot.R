@@ -107,7 +107,7 @@ reportOnGenes = function(tissue,
     gene = en.gene
     cat("Working on gene",gene,genes[which(en.genes %in% gene)],"\n")
     mod = net$moduleColors[names(net$moduleColors) == en.gene]
-    mmmask = mms[names(net$moduleColors) == en.gene]
+    mmmask = mms[en.gene == names(mms)]
 
     #mod = unique(mod)
     if(length(mod) >= 1){

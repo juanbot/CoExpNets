@@ -1978,6 +1978,28 @@ princePlot = function (prince, label = colnames(prince$o), smallest = -20,
             }, notecol = notecol, notecex = notecex)
 }
 
+adjacencyGeneration = function(beta,which.one,package=NULL){
+
+  if(is.null(package))
+    package = which.one
+
+  #Adjacency for microarray
+  ts = getAvailableNetworks(which.one)
+  for(tissue in ts){
+    cat("Working on tissue's adjacency",tissue,"\n")
+    netFile = CoExpNets::getNetworkFromTissue(tissue=tissue,which.one=which.one,only.file=T)
+    adjfile = paste0(netFile,".adj.rds")
+
+    expr.data = CoExpNets::getExprDataFromTissue(tissue=tissue,which.one=which.one)
+    adjacency = WGCNA::adjacency(expr.data, power = beta, type = "signed" )
+    TOM = WGCNA::TOMsimilarity(adjacency)
+    colnames(TOM) = colnames(expr.data)
+    localadj = apply(TOM,2,sum)
+    names(localadj) = colnames(TOM)
+    cat("Saving at",adjfile,"\n")
+    saveRDS(localadj,adjfile)
+  }
+}
 
 testCoExpNetworks = function(){
   if(!exists("coexp.nets"))

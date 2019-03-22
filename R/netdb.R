@@ -420,6 +420,16 @@ getModuleFromGenes = function(tissue="SNIG",which.one="exonic",genes){
   return(net$moduleColors[match(genes,names(net$moduleColors))])
 }
 
+#' Title
+#'
+#' @param tissues
+#' @param which.ones
+#' @param modules
+#'
+#' @return
+#' @export
+#'
+#' @examples
 getGOFromTissues = function(tissues,which.ones,modules){
   n = length(modules)
   toreturn = NULL
@@ -436,6 +446,16 @@ getGOFromTissues = function(tissues,which.ones,modules){
 }
 
 
+#' Title
+#'
+#' @param tissue
+#' @param which.one
+#' @param module
+#'
+#' @return
+#' @export
+#'
+#' @examples
 getGOFromTissue = function(tissue="SNIG",which.one="rnaseq",module=NULL){
   gofile = findGO(which.one,tissue)
   if(length(gofile)){
@@ -453,6 +473,16 @@ getGOFromTissue = function(tissue="SNIG",which.one="rnaseq",module=NULL){
   return(NULL)
 }
 
+#' Title
+#'
+#' @param tissue
+#' @param which.one
+#' @param module
+#'
+#' @return
+#' @export
+#'
+#' @examples
 getCellTypeFromTissue = function(tissue="SNIG",which.one="rnaseq",module=NULL){
 
   ctfile = findCT(which.one,tissue)
