@@ -155,7 +155,6 @@ We will use `covs$batch` as the batch covariate for samples. By using `mod=model
 rpkms_combat = sva::ComBat(dat=rpkms_qn,batch=covs$batch,
                        mod=model.matrix(~1,data=covs[,c("gender","age","pmi")]),
                       par.prior=T)
-rpkms_combat = rpkms_combat - min(rpkms_combat)
 
 covariate="batch"
 mask = sample(1:ncol(rpkms_combat),100)

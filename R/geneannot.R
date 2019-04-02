@@ -64,13 +64,69 @@ reportOnFETGenes = function(tissue,genes,which.one,net){
   return(the.table)
 }
 
+globalReportOnGenes = function(tissues,
+                               categories,
+                               genes){
+  stopifnot(length(tissues) > 0)
+  stopifnot(length(tissues) == length(categories))
+
+  allreport = NULL
+  singcats = unique(categories)
+  for(category in singcats){
+    cat("Working on",category,"\n")
+    mask = categories == category
+    localtissues = tissues[mask]
+    cat("Working on",paste0(localtissues,collapse=", "),"\n")
+    report = reportOnGenesMultipleTissue(tissues=localtissues,
+                                         genes=genes,
+                                         which.one=category)$report
+
+    allreport = rbind(allreport,report)
+  }
+
+  #Get the bonferroni factor
+  ntests = 0
+  pvals = NULL
+  cats = tiss = mods = NULL
+  for(category in singcats){
+    mask = categories == category
+    localtissues = tissues[mask]
+    for(ltissue in localtissues){
+      localreport = allreport[allreport$category == category & allreport$tissue == ltissue,]
+      modules = unique(localreport$module)
+      for(module in modules){
+        cats = c(cats,category)
+        tiss = c(tiss,ltissue)
+        mods = c(mods,module)
+        pvals = c(pvals,allreport[allreport$category == category &
+                                    allreport$tissue == ltissue &
+                                    allreport$module == module,]$fisher)
+      }
+    }
+  }
+
+  fdrpvalues = p.adjust(as.numeric(pvals),method = "fdr")
+  bonfpvalues = p.adjust(as.numeric(pvals),method = "bonferroni")
+  allreport = cbind(allreport,rep(0,nrow(allreport)),rep(0,nrow(allreport)))
+
+  mask = (ncol(allreport) - 1):ncol(allreport)
+  colnames(allreport)[mask] = c("FDR","Bonferroni")
+  for(mytest in 1:length(cats)){
+    indexes = which(allreport$category == cats[mytest] & allreport$tissue == tiss[mytest] &
+                                allreport$module == mods[mytest])
+    allreport[indexes,mask] = c(fdrpvalues[mytest],bonfpvalues[mytest])
+  }
+  return(allreport)
+
+}
+
+
 
 reportOnGenes = function(tissue,
                          genes,
                          silent=F,
                          which.one="signedrnaseq",
                          alt.probes=NULL,
-                         include.pd=T,
                          ens.correction=NULL,
                          gwases=NULL){
 
@@ -114,8 +170,7 @@ reportOnGenes = function(tissue,
       cat("Gene found in module",mod,"in ",tissue,"\n")
       for(i in 1:length(mod)){
         report = reportOnModule(tissue,mod[i],
-                                which.one=which.one,
-                                include.pd=include.pd)
+                                which.one=which.one)
         mm = mmmask[i]
         gene = gene.names[en.genes == en.gene]
         report = c(gene = gene,
@@ -205,7 +260,7 @@ reportOnGenes = function(tissue,
     mods[single.index] = few.modules[[1]][[1]]
   }
 
-  if(include.pd & !is.null(mods)){
+  if(!is.null(mods)){
     p.val.mods = vector(mode="numeric",length=length(mods))
     names(p.val.mods) = mods
     table.mods = table(mods)
@@ -219,7 +274,7 @@ reportOnGenes = function(tissue,
     the.table = cbind(the.table,p.val.mods)
     the.table = as.data.frame(the.table,stringsAsFactors=F)
     rownames(the.table) = names(final.report[genes.with.report])
-    colnames(the.table[ncol(the.table)]) = "fisher"
+    colnames(the.table)[ncol(the.table)] = "fisher"
 
   }
   cat("These genes are found in more than 1 module:",mult.mod.genes,"\n")
@@ -230,9 +285,7 @@ reportOnGenesMultipleTissue = function(tissues,genes,silent=F,
                                        which.one="signedrnaseq",
                                        alt.probes=NULL,
                                        out.file=NULL,
-                                       include.pd=T,
-                                       gwases=NULL,
-                                       mod.level.correct=T){
+                                       gwases=NULL){
 
   out.table = NULL
 
@@ -240,10 +293,10 @@ reportOnGenesMultipleTissue = function(tissues,genes,silent=F,
   for(tissue in tissues){
 
     tissue.report = reportOnGenes(tissue=tissue,
-                                  genes=genes,silent=silent,
+                                  genes=genes,
+                                  silent=silent,
                                   which.one=which.one,
                                   alt.probes=alt.probes,
-                                  include.pd=include.pd,
                                   gwases=gwases)
 
     if(!is.null(tissue.report$report)){
@@ -261,17 +314,17 @@ reportOnGenesMultipleTissue = function(tissues,genes,silent=F,
   }
 
   #We have to correct p.val.mods here!
-  if(mod.level.correct){
-    modules = 0
-    for(tissue in tissues)
-      modules = modules + length(getModulesFromTissue(tissue=tissue,
-                                                      which.one=which.one))
-    bonf = out.table$p.val.mods * modules
-    bonf[bonf > 1] = 1
-    out.table = cbind(out.table,bonf)
-
-    colnames(out.table)[ncol(out.table)] = "bonfpval"
-  }
+  # if(mod.level.correct){
+  #   modules = 0
+  #   for(tissue in tissues)
+  #     modules = modules + length(getModulesFromTissue(tissue=tissue,
+  #                                                     which.one=which.one))
+  #   bonf = out.table$fisher * modules
+  #   bonf[bonf > 1] = 1
+  #   out.table = cbind(out.table,bonf)
+  #
+  #   colnames(out.table)[ncol(out.table)] = "bonfpval"
+  # }
 
   out.table = cbind(rep(which.one,nrow(out.table)),out.table)
   colnames(out.table)[1] = "category"
@@ -295,7 +348,6 @@ reportOnModule = function(tissue="SNIG",
                           module,
                           which.one="rnaseq",
                           how.many=5,
-                          include.pd=T,
                           simple.cell.types=F,
                           cell.type.threshold=0.05,
                           ctcollapse=T){
@@ -304,7 +356,7 @@ reportOnModule = function(tissue="SNIG",
   if(!is.null(tmp.report))
     return(tmp.report)
 
-
+  include.pd = T
   pd.genes = "void"
   if(include.pd){
     pd.genes = read.table(paste0(system.file("", "", package = "CoExpNets"),"/pd_genes.txt"),
@@ -964,17 +1016,17 @@ cellTypeByModule = function(tissue="None",
   last.cell.types = c(coexp.ukbec.cell.types,colnames(external.ref))
 
   if(nrow(userEnrichment) > 0)
-  for(i in 1:nrow(userEnrichment)){
-    #print(enrichment)
-    module = userEnrichment$InputCategories[i]
-    #print(module)
-    for(j in 1:length(input.file.names)){
-      if(grepl(input.file.names[j],userEnrichment$UserDefinedCategories[i]))
-        break
+    for(i in 1:nrow(userEnrichment)){
+      #print(enrichment)
+      module = userEnrichment$InputCategories[i]
+      #print(module)
+      for(j in 1:length(input.file.names)){
+        if(grepl(input.file.names[j],userEnrichment$UserDefinedCategories[i]))
+          break
+      }
+      category = cell.types.i.f[j]
+      cell.type.data[category,module] = userEnrichment$CorrectedPvalues[i]
     }
-    category = cell.types.i.f[j]
-    cell.type.data[category,module] = userEnrichment$CorrectedPvalues[i]
-  }
 
 
   #But before, rename them
@@ -1003,15 +1055,15 @@ cellTypeByModule = function(tissue="None",
     if(!is.null(plot.file))
       pdf(plot.file,width=15,height=8)
     gplots::heatmap.2(cell.type.data[apply(cell.type.data,1,function(x){ any(x > 2)}),],
-              trace="none",
-              col=heat.colors(100)[100:1],
-              cexCol=0.7,
-              cexRow=0.7,
-              Rowv=F,
-              Colv=T,
-              main=paste0("Cell type enrichment for ",legend),
-              key=F,srtCol=45,dendrogram="none",
-              margins=c(6,20))
+                      trace="none",
+                      col=heat.colors(100)[100:1],
+                      cexCol=0.7,
+                      cexRow=0.7,
+                      Rowv=F,
+                      Colv=T,
+                      main=paste0("Cell type enrichment for ",legend),
+                      key=F,srtCol=45,dendrogram="none",
+                      margins=c(6,20))
 
     if(!is.null(plot.file))
       dev.off()

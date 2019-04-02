@@ -1,6 +1,14 @@
 
 
 #Use system.file("extdata", "2010.csv", package = "testdat", mustWork = TRUE)
+#' Title
+#'
+#' @param genes
+#'
+#' @return
+#' @export
+#'
+#' @examples
 fromAny2Ensembl = function(genes){
   if(substr(genes[1],1,1) == "X"){
     return(fromGeneName2Ensembl(fromXtIDToGeneSymbols19K(genes)))
@@ -14,6 +22,15 @@ fromAny2Ensembl = function(genes){
   return(genes)
 }
 
+#' Title
+#'
+#' @param genes
+#' @param use38
+#'
+#' @return
+#' @export
+#'
+#' @examples
 fromGeneName2EnsemblBM = function(genes,use38=T){
 
   if(use38){
@@ -52,6 +69,15 @@ fromGeneName2EnsemblBM = function(genes,use38=T){
   return(genes)
 }
 
+#' Title
+#'
+#' @param genes
+#' @param use38
+#'
+#' @return
+#' @export
+#'
+#' @examples
 fromEnsembl2GeneNameBM = function(genes,use38=T){
   if(use38){
     ensembl <- useMart(biomart="ENSEMBL_MART_ENSEMBL",
@@ -84,6 +110,17 @@ fromEnsembl2GeneNameBM = function(genes,use38=T){
 }
 
 
+#' Title
+#'
+#' @param genes
+#' @param table.file
+#' @param ignore.unknown
+#' @param which.are.unknown
+#'
+#' @return
+#' @export
+#'
+#' @examples
 fromEntrez2Ensembl <- function(genes,
                                table.file=biotype.all.file,
                                ignore.unknown=FALSE,
@@ -114,6 +151,16 @@ fromEntrez2Ensembl <- function(genes,
   return(gene.names)
 }
 
+#' Title
+#'
+#' @param genes
+#' @param ignore.unknown
+#' @param which.are.unknown
+#'
+#' @return
+#' @export
+#'
+#' @examples
 fromGeneName2Ensembl <- function(genes,ignore.unknown=FALSE,which.are.unknown=FALSE){
   if(!exists("coexp.utils.gene.names.conv.table"))
     loadConvTable()
@@ -137,6 +184,14 @@ fromGeneName2Ensembl <- function(genes,ignore.unknown=FALSE,which.are.unknown=FA
   return(gene.names)
 }
 
+#' Title
+#'
+#' @param genes
+#'
+#' @return
+#' @export
+#'
+#' @examples
 fromAny2GeneName = function(genes){
   if(substr(genes[1],1,1) == "X"){
     return(fromXtIDToGeneSymbols19K(genes))
@@ -146,6 +201,14 @@ fromAny2GeneName = function(genes){
   return(genes)
 }
 
+#' Title
+#'
+#' @param xids
+#'
+#' @return
+#' @export
+#'
+#' @examples
 fromXtIDToGeneSymbols19K = function(xids){
 
   trans.table <- read.csv(paste0(system.file("", "", package = "CoExpNets"),
@@ -156,6 +219,12 @@ fromXtIDToGeneSymbols19K = function(xids){
   return(gene.symbols)
 }
 
+#' Title
+#'
+#' @return
+#' @export
+#'
+#' @examples
 loadConvTable = function(){
 
   the.table = read.table(system.file("", "EnsemblNamesGRCh38.txt", package = "CoExpNets"),
