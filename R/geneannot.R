@@ -98,9 +98,9 @@ globalReportOnGenes = function(tissues,
         cats = c(cats,category)
         tiss = c(tiss,ltissue)
         mods = c(mods,module)
-        pvals = c(pvals,allreport[allreport$category == category &
+        pvals = c(pvals,unique(allreport[allreport$category == category &
                                     allreport$tissue == ltissue &
-                                    allreport$module == module,]$fisher)
+                                    allreport$module == module,]$fisher))
       }
     }
   }
@@ -114,7 +114,8 @@ globalReportOnGenes = function(tissues,
   for(mytest in 1:length(cats)){
     indexes = which(allreport$category == cats[mytest] & allreport$tissue == tiss[mytest] &
                                 allreport$module == mods[mytest])
-    allreport[indexes,mask] = c(fdrpvalues[mytest],bonfpvalues[mytest])
+    newdata = matrix(nrow=length(indexes),ncol=2,data=c(fdrpvalues[mytest],bonfpvalues[mytest]),byrow=T)
+    allreport[indexes,mask] = newdata
   }
   return(allreport)
 
