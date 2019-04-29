@@ -33,7 +33,7 @@ saveRDS(rpkms,"~/tmp/rosmap_rpkms.rds")
 ```
 
 
-#Visualizing the samples
+# Visualizing the samples
 
 Now the data is ready to work with. The rows of covariates (samples) are aligned with the columns of the expression data (the same samples). Before doing any other thing, we would like to explore ROS/MAP samples at the level of the covariates in order to check for evident batch effects. We won't be using all samples for this representation (it takes a while to compute), only 100 randomly chosen. We will be using the nice method `limma::plotMDS` which takes gene expression data and plots each sample in a 2D plot, tring to mimic in the distance between samples at the plot, their log2 fold changes in expression. Which means that samples appearing together are similar in expression, and the other way around.
 
@@ -86,7 +86,7 @@ legend("topright",fill=colors,
 And the situation is more subtle (it usually is) but can be appreciated in some of the samples.
 
 
-#Detecting possible outliers
+# Detecting possible outliers
 
 We will see later how to correct this in the data so we clean this effect. But before doing this we will check for the existence of outliers. We do it by using a simple test based on the comparison of each sample z-score (outlier minus the mean, divided by sd) with the sample distribution. Check `help(grubbs.test)`.
 
@@ -113,7 +113,7 @@ if(result$p.value < 0.05){
 As a visual test of what the statistical test is saying, we can represent each sample in a dendrogram through hierarchical clustering (we know how to do that) and we will see that effectively this sample appears as an extreme. However, one may doubt about it being an outlier. It will depend on how happy we are with the number of samples we have. We will actually keep it.
 
 
-#Data normalisation
+# Data normalisation
 
 And now below we prepare the data again for normalization of gene expression across samples, by using quantile normalization and save results. We will need samples at columns and genes at rows. Quantile normalization is based on the notion of the q-q plot in which two samples are identical if their q-q plot is a straight diagonal line. The paper is available at the material for these seminars.
 
@@ -201,7 +201,7 @@ As we see, the `svaseq` method needs a null model in `mod0` and the model we wan
 After the `standard` 5 iterations of the method, we can see `svaseq` generates 8 additional axes to be added to the regression model to apply to the batch corrected data. See more information on SVA plust ComBat at [the SVA paper](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3307112/).
 
 
-#Correcting the data by a linear regression approach
+# Correcting the data by a linear regression approach
 
 Now, in `svas` we have the axes ready to be used for data correction. Being these axes surrogate variables or hidden effects we can't account for explicitly because there is no covariate defining them.
 
