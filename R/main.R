@@ -1608,8 +1608,7 @@ corDistance = function(a,b,signed=TRUE,cor.type="pearson"){
 #' network net$moduleColors vector. Use this parameter together with the net one and
 #' which.one set to "new" for a network which is not in the DDBB.
 #' @param tissue A tissue as it can be find in the network DDBB
-#' @param genes The gene names. If set to true, the MM of all genes in the network is obtained
-#' @param table.format If you want results as a data.frame set this to TRUE
+#' @param genes The gene names. If set to NULL, the MM of all genes in the network is obtained
 #' @param which.one The category the network belongs to. If not in the DDBB just ignore it
 #' @param silent Set to true if you want no log
 #' @param keep.grey Use grey genes too
@@ -1622,11 +1621,13 @@ corDistance = function(a,b,signed=TRUE,cor.type="pearson"){
 #' @examples
 getMM = function(net=NULL,
                  expr.data.file=NULL,
-                 tissue,genes,
-                 table.format=FALSE,
+                 tissue,
+                 genes,
                  which.one="rnaseq",
-                 silent=F,keep.grey=F,
-                 alt.gene.index=NULL){
+                 silent=F,
+                 keep.grey=F,
+                 alt.gene.index=NULL,
+                 dupAware=T){
 
   if(is.null(net))
     net = getNetworkFromTissue(tissue,which.one)
@@ -1659,53 +1660,54 @@ getMM = function(net=NULL,
     genes = names(net$moduleColors) #[net$moduleColors != "grey"]
   }
 
-  if(table.format){
-    out.table = data.frame(list(ensgene=character(0),name=character(0),
-                                module=character(0),mm=numeric(0)),stringsAsFactors=FALSE)
-    n.row = 1
-    out.table[1:length(genes),1] = genes
-    out.table[1:length(genes),2] = fromAny2GeneName(genes)
-    out.table[1:length(genes),3] = net$moduleColors[match(genes,names(net$moduleColors))]
-  }
-
-  for(gene in genes){
-    if(!is.null(alt.gene.index)){
-      module = net$moduleColors[alt.gene.index[which(genes %in% gene)]]
-      expr.data.gene.index = alt.gene.index[which(genes %in% gene)]
-    }else{
-      module = net$moduleColors[names(net$moduleColors) %in% gene]
-      expr.data.gene.index = gene
+  if(dupAware){
+    newgenes = NULL
+    mods = NULL
+    for(gene in genes){
+      localmods = net$moduleColors[names(net$moduleColors) == gene]
     }
+    newgenes = c(newgenes,rep(gene,length(localmods)))
+    mods = c(mods,localmods)
+    genes = newgenes
+    modules = mods
+
+    genes = genes[!duplicated(modules)]
+    modules = modules[!duplicated(modules)]
+
+  }else
+    modules = net$moduleColors[match(genes,names(net$moduleColors))]
+
+      out.table = data.frame(list(ensgene=character(0),name=character(0),
+                                  module=character(0),mm=numeric(0)),stringsAsFactors=FALSE)
+      n.row = 1
+      out.table[1:length(genes),1] = genes
+      out.table[1:length(genes),2] = fromAny2GeneName(genes)
+      out.table[1:length(genes),3] = unique(net$moduleColors[names(net$moduleColors) %in% genes])
+
+
+
+  for(i in 1:length(genes)){
+    gene = genes[i]
+    module = modules[i]
+    expr.data.gene.index = gene
+
     if(length(module) == 0){
       if(!silent)
         cat("Gene ",gene," not in network\n")
-      mm[[gene]] = -1
+      out.table[i,4] = -1
     }else{
-      if(length(module) > 1)
-        module = module[1]
       if(module == "grey" & !keep.grey)
-        mm[[gene]] = 0
+        out.table[i,4] = 0
       else{
-        if(length(module) > 1){
-          if(!silent)
-            print(paste0("Gene ",gene, " found in modules ",module))
-          module = module[1]
-          if(!silent)
-            print(paste0("Keeping only ",module))
-        }
 
-        tryCatch(mm[[gene]] <- cor(net$MEs[paste0("ME",module)],expr.data[,expr.data.gene.index]),
+        tryCatch(out.table[i,4] <- cor(net$MEs[paste0("ME",module)],expr.data[,expr.data.gene.index]),
                  error = function(e){
                    print(paste0("Error in module ",module," ",e))
                  })
       }
     }
   }
-  if(table.format){
-    out.table[1:length(genes),4] = unlist(mm[genes])
-    return(out.table)
-  }
-  return(mm)
+  return(out.table)
 }
 
 

@@ -160,22 +160,20 @@ reportOnGenes = function(tissue,
               genes=en.genes)
   modules = na.omit(unique(getModuleFromGenes(which.one=which.one,tissue=tissue,genes=en.genes)))
 
-  for(en.gene in en.genes){
-    gene = en.gene
-    cat("Working on gene",gene,genes[which(en.genes %in% gene)],"\n")
-    mod = net$moduleColors[names(net$moduleColors) == en.gene]
-    mmmask = mms[en.gene == names(mms)]
+  for(i in 1:nrow(mms)){
+    gene = mms[i,1]
+    mod = mms[i,3]
+
+    cat("Working on gene",gene,"\n")
 
     #mod = unique(mod)
     if(length(mod) >= 1){
       cat("Gene found in module",mod,"in ",tissue,"\n")
-      for(i in 1:length(mod)){
-        report = reportOnModule(tissue,mod[i],
+      report = reportOnModule(tissue,mod,
                                 which.one=which.one)
-        mm = mmmask[i]
-        gene = gene.names[en.genes == en.gene]
+        mm = mms[i,4]
         report = c(gene = gene,
-                   ensgene = en.gene,
+                   ensgene = mms[i,2],
                    mm = signif(as.numeric(mm),4),
                    report)
 
@@ -192,23 +190,20 @@ reportOnGenes = function(tissue,
           wgcna.cell.cats = "void"
         }
 
-        if(i > 1)
-          final.report[[paste0(gene,"_version_",i)]] = report
+        if(sum(mms[,1] == gene) > 1){
+          j = sum(mms[1:i,1] == gene)
+          final.report[[paste0(gene,"_version_",j)]] = report
+
+        }
+
         else
           final.report[[gene]] = report
-      }
-
-
-
     }else{
       cat("Gene not found in",tissue," gene set",which.one,"\n")
       mod = "void"
       mm = 0
       report = NULL
     }
-
-
-
   }
   #And now we add the fisher exact test results
 
