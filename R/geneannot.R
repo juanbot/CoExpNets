@@ -161,7 +161,7 @@ reportOnGenes = function(tissue,
   modules = na.omit(unique(getModuleFromGenes(which.one=which.one,tissue=tissue,genes=en.genes)))
 
   for(i in 1:nrow(mms)){
-    gene = mms[i,1]
+    gene = mms[i,2]
     mod = mms[i,3]
 
     cat("Working on gene",gene,"\n")
@@ -173,7 +173,7 @@ reportOnGenes = function(tissue,
                                 which.one=which.one)
         mm = mms[i,4]
         report = c(gene = gene,
-                   ensgene = mms[i,2],
+                   ensgene = mms[i,1],
                    mm = signif(as.numeric(mm),4),
                    report)
 
