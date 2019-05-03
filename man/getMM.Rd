@@ -7,8 +7,8 @@ This function works by getting the Pearson correlation between the
 eigengene of the module and the gene(s).}
 \usage{
 getMM(net = NULL, expr.data.file = NULL, tissue, genes,
-  table.format = FALSE, which.one = "rnaseq", silent = F,
-  keep.grey = F, alt.gene.index = NULL)
+  which.one = "rnaseq", silent = F, keep.grey = F,
+  alt.gene.index = NULL, dupAware = T)
 }
 \arguments{
 \item{net}{The network can be either and object or a file}
@@ -20,9 +20,7 @@ which.one set to "new" for a network which is not in the DDBB.}
 
 \item{tissue}{A tissue as it can be find in the network DDBB}
 
-\item{genes}{The gene names. If set to true, the MM of all genes in the network is obtained}
-
-\item{table.format}{If you want results as a data.frame set this to TRUE}
+\item{genes}{The gene names. If set to NULL, the MM of all genes in the network is obtained}
 
 \item{which.one}{The category the network belongs to. If not in the DDBB just ignore it}
 

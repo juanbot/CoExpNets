@@ -1665,9 +1665,10 @@ getMM = function(net=NULL,
     mods = NULL
     for(gene in genes){
       localmods = net$moduleColors[names(net$moduleColors) == gene]
+      newgenes = c(newgenes,rep(gene,length(localmods)))
+      mods = c(mods,localmods)
+
     }
-    newgenes = c(newgenes,rep(gene,length(localmods)))
-    mods = c(mods,localmods)
     genes = newgenes
     modules = mods
 
