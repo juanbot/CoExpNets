@@ -1671,19 +1671,26 @@ getMM = function(net=NULL,
     }
     genes = newgenes
     modules = mods
-
-    genes = genes[!duplicated(modules)]
-    modules = modules[!duplicated(modules)]
+    finalgenes = NULL
+    finalmodules = NULL
+    for(module in unique(modules)){
+      genesinmodule = genes[modules == module]
+      finalgenes = c(finalgenes,genesinmodule[!duplicated(genesinmodule)])
+      finalmodules = c(finalmodules,rep(module,sum(!duplicated(genesinmodule))))
+    }
+    genes = finalgenes
+    modules = finalmodules
 
   }else
     modules = net$moduleColors[match(genes,names(net$moduleColors))]
 
-      out.table = data.frame(list(ensgene=character(0),name=character(0),
-                                  module=character(0),mm=numeric(0)),stringsAsFactors=FALSE)
-      n.row = 1
-      out.table[1:length(genes),1] = genes
-      out.table[1:length(genes),2] = fromAny2GeneName(genes)
-      out.table[1:length(genes),3] = unique(net$moduleColors[names(net$moduleColors) %in% genes])
+  out.table = data.frame(list(ensgene=character(0),name=character(0),
+                              module=character(0),mm=numeric(0)),
+                         stringsAsFactors=FALSE)
+  n.row = 1
+  out.table[1:length(genes),1] = genes
+  out.table[1:length(genes),2] = fromAny2GeneName(genes)
+  out.table[1:length(genes),3] = modules
 
 
 
@@ -2105,8 +2112,8 @@ adjacencyStudy = function(categories = c("CoExpROSMAP",
             tcount = tcount + 1
             adjgenes = readRDS(adjfile)
             if(category == "CoExpROSMAP")
-            names(adjgenes) = unlist(lapply(names(adjgenes),function(x){
-                                            stringr::str_split(x,"\\.")[[1]][1]}))
+              names(adjgenes) = unlist(lapply(names(adjgenes),function(x){
+                stringr::str_split(x,"\\.")[[1]][1]}))
             names(adjgenes) = fromAny2GeneName(names(adjgenes))
             mask = names(adjgenes) %in% colnames(adjs)
             adjgenes = adjgenes[mask]
@@ -2198,9 +2205,9 @@ adjacencyStudy = function(categories = c("CoExpROSMAP",
   tissues = as.data.frame(tissues)
   colnames(tissues) = c(categories,"beta","nsamples")
 
-    resids = apply(resids, 2, function(y){
-      lm( y ~ . , data=tissues)$residuals
-    })
+  resids = apply(resids, 2, function(y){
+    lm( y ~ . , data=tissues)$residuals
+  })
 
   stsne = Rtsne(resids,dims=2,perplexity=15,check_duplicates = F)
   plot(stsne$Y)
@@ -2243,7 +2250,7 @@ prettyPlot = function(mms,what="PCA",zoom=NULL){
     ggplot(data=mydata) + aes(x=tSNEaxis1,y=tSNEaxis2) +
       geom_text(aes(x=tSNEaxis1,y=tSNEaxis2,label=labels,color=colors),size=5) +
       theme_minimal() + theme(legend.position="bottom")
-  return(NULL)
+    return(NULL)
   }else if(what == "PCA"){
     if(is.null(zoom)){
       pca = prcomp(scale(mms$resids))
@@ -2298,7 +2305,7 @@ prettyPlot = function(mms,what="PCA",zoom=NULL){
 }
 
 MMStudy = function(categories = c("CoExpROSMAP","10UKBEC","gtexv6","nabec"),
-                          common.genes=F){
+                   common.genes=F){
   batchid = NULL
   betas = NULL
   if(common.genes){
