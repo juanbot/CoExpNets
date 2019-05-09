@@ -1647,6 +1647,7 @@ getMM = function(net=NULL,
 
   colnames(expr.data) = fromAny2Ensembl(colnames(expr.data))
   names(net$moduleColors) = fromAny2Ensembl(names(net$moduleColors))
+  ens.genes = fromAny2Ensembl(genes)
 
   if(is.null(expr.data)){
     cat("There is no expr.data file registered for category", which.one,"and tissue",tissue,"\n")
@@ -1663,7 +1664,7 @@ getMM = function(net=NULL,
   if(dupAware){
     newgenes = NULL
     mods = NULL
-    for(gene in genes){
+    for(gene in ens.genes){
       localmods = net$moduleColors[names(net$moduleColors) == gene]
       newgenes = c(newgenes,rep(gene,length(localmods)))
       mods = c(mods,localmods)
