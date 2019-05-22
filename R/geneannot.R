@@ -158,6 +158,9 @@ reportOnGenes = function(tissue,
               expr.data.file=expr.data,
               tissue=tissue,
               genes=en.genes)
+  if(length(mms) == 0)
+    return(NULL)
+
   modules = na.omit(unique(getModuleFromGenes(which.one=which.one,tissue=tissue,genes=en.genes)))
 
   for(i in 1:nrow(mms)){
@@ -284,10 +287,8 @@ reportOnGenesMultipleTissue = function(tissues,genes,silent=F,
                                        gwases=NULL){
 
   out.table = NULL
-
   problematic.genes = NULL
   for(tissue in tissues){
-
     tissue.report = reportOnGenes(tissue=tissue,
                                   genes=genes,
                                   silent=silent,
@@ -321,7 +322,8 @@ reportOnGenesMultipleTissue = function(tissues,genes,silent=F,
   #
   #   colnames(out.table)[ncol(out.table)] = "bonfpval"
   # }
-
+  if(is.null(out.table))
+    return(list(report=out.table,mult.genes=NULL))
   out.table = cbind(rep(which.one,nrow(out.table)),out.table)
   colnames(out.table)[1] = "category"
 

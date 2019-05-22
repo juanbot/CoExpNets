@@ -1666,9 +1666,10 @@ getMM = function(net=NULL,
     mods = NULL
     for(gene in ens.genes){
       localmods = net$moduleColors[names(net$moduleColors) == gene]
-      newgenes = c(newgenes,rep(gene,length(localmods)))
-      mods = c(mods,localmods)
-
+      if(length(localmods)){
+        newgenes = c(newgenes,rep(gene,length(localmods)))
+        mods = c(mods,localmods)
+      }
     }
     genes = newgenes
     modules = mods
@@ -1684,6 +1685,9 @@ getMM = function(net=NULL,
 
   }else
     modules = net$moduleColors[match(genes,names(net$moduleColors))]
+
+  if(is.null(genes))
+    return(NULL)
 
   out.table = data.frame(list(ensgene=character(0),name=character(0),
                               module=character(0),mm=numeric(0)),
