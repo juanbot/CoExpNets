@@ -64,6 +64,70 @@ reportOnFETGenes = function(tissue,genes,which.one,net){
   return(the.table)
 }
 
+#' Get known genes in a network
+#'
+#' This method will return a vector of logical values with the same length as `genes`.
+#' It will get the IDs of tne network in `tissue` and `which.one` convert both genes and ids
+#' to Ensembl and check for matches. TRUE means the gene can be used in the analysis with
+#' that network. FALSE means either the gene is not used in that network or that it could be
+#' there with a different name or id format.
+#'
+#' @param tissue c
+#' @param which.one The category the network belongs to
+#' @param genes The list of gene IDs you want to use. They can be as gene symbols or Ensembl IDs
+#'
+#' @return A vector of logical values
+#' @export
+#'
+#' @examples
+#'
+reportOnGeneIDs = function(tissue,
+                           which.one,
+                           genes){
+
+  #Translate the genes to Ensemble
+  ids = fromAny2Ensembl(genes)
+  nids = fromAny2Ensembl(getGenesFromModule(tissue=tissue,which.one=which.one,module=NULL))
+  return(ids %in% nids)
+
+}
+
+#' Get known genes in a set of networks
+#'
+#' This method will return a matrix of logical values with the same columns as number of ids in `genes`.
+#' For each network, it will call `reportOnGenIDs()`` as many times as different networks.
+#'
+#' @param tissues The networks as they appear in the network database
+#' @param which.one The categories the networks belong to
+#' @param genes The list of gene IDs you want to use. They can be as gene symbols or Ensembl IDs
+#'
+#' @return A matrix of logical values (genes in columns and networks in rows)
+#' @export
+#'
+#' @examples
+reportOnGeneIDsGlobal = function(tissues,
+                               categories,
+                               ids){
+  stopifnot(length(tissues) > 0)
+  stopifnot(length(tissues) == length(categories))
+  stopifnot(length(ids) > 0)
+
+  allreport = NULL
+  i = 1
+  for(tissue in tissues){
+    cat("Working on",tissue," and ",categories[i],"\n")
+    allreport = rbind(allreport,reportOnGeneIDs(tissue=tissue,
+                                         genes=ids,
+                                         which.one=categories[i]))
+    i = i + 1
+  }
+  colnames(allreport) = ids
+  rownames(allreport) = tissues
+  allreport
+}
+
+
+
 globalReportOnGenes = function(tissues,
                                categories,
                                genes){

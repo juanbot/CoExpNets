@@ -18,7 +18,6 @@ fromAny2Ensembl = function(genes){
 
   #Still one possibility, does it have versions?
   genes = gsub("\\.[0-9]+","",genes)
-
   return(genes)
 }
 
