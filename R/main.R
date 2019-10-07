@@ -374,7 +374,7 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
                                  fullAnnotation = F,
                                  expr.data=datain,
                                  job.path=outfolder)
-      return(net)
+      return(readRDS(net))
 
     }
     job = launchJob(parameters = params,
