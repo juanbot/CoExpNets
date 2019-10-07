@@ -370,6 +370,7 @@ getBootstrapNetworkCl = function(mode=c("leaveoneout","bootstrap"),
                                  beta=-1,
                                  net.type = "signed",
                                  debug=F,
+                                 fullAnnotation = F,
                                  expr.data=datain,
                                  job.path=outfolder)
       return(net)
