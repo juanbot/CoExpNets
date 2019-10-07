@@ -409,6 +409,29 @@ getModulesFromTissue = function(tissue="SNIG",which.one="rnaseq",in.cluster=F){
   return(unique(getNetworkFromTissue(tissue,which.one)$moduleColors))
 }
 
+getTOMFromTissue = function(tissue="SNIG",which.one="rnaseq",create=F,beta=6){
+  tfile = paste(CoExpNets::getNetworkFromTissue(tissue=tissue,
+                                                which.one=which.one,only.file=T),".tom.rds")
+  if(file.exists(tfile))
+    return(tfile)
+  if(create){
+      stopifnot(beta > 0 & beta < 40)
+
+      expr.data = CoExpNets::getExprDataFromTissue(tissue=tissue,which.one=which.one)
+      cat("Creating TOM for",ncol(expr.data),"genes and",nrow(expr.data),"samples, beta",
+          beta,"and type signed\n")
+      adjacency = adjacency(expr.data, power = beta, type = "signed" )
+      print("Adjacency matrix created")
+      print("Creating TOM")
+      TOM = TOMsimilarity(adjacency)
+      colnames(TOM) = colnames(expr.data)
+      rownames(TOM) = colnames(TOM)
+      return(TOM)
+
+  }
+  return(NULL)
+}
+
 getGenesFromModule = function(tissue="SNIG",which.one="rnaseq",module="black"){
   net = getNetworkFromTissue(tissue=tissue,which.one=which.one)
   if(is.null(module)) return(names(net$moduleColors))

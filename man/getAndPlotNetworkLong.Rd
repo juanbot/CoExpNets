@@ -10,7 +10,7 @@ getAndPlotNetworkLong(expr.data, beta, net.type = "signed",
   tissue.name = "MyTissue", title = NULL, additional.prefix = NULL,
   min.cluster.size = 100, save.plots = TRUE, return.tom = FALSE,
   excludeGrey = FALSE, max.k.cutoff = 150, r.sq.cutoff = 0.8,
-  cor.type = "pearson")
+  cor.type = "pearson", silent = T)
 }
 \arguments{
 \item{expr.data}{Aan object or a file, genes at columns, samples at rows.

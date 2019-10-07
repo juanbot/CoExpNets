@@ -624,13 +624,13 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
                                job.path,
                                allsampsnet=F,
                                excludeGrey=F,
+                               annotateFinalNet=F,
                                each=1,
                                blockTOM=F,
                                removeTOMF=F,
                                min.cluster.size=100,
                                tissue="Bootstrap",
                                b=10,...){
-  print(expr.data[1:5,1:5])
   if(typeof(expr.data) == "character")
     expr.data = readRDS(expr.data)
 
@@ -676,7 +676,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
                                save.plots=F,
                                n.iterations=0,
                                save.tom=T,...)
-
+    net = readRDS(net)
     cat("Accumulating TOM",net$tom,"\n")
     if(blockTOM){
       cat("Reading TOM\n")
@@ -765,6 +765,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
   outnet = applyKMeans(tissue=tissue,
                        n.iterations=n.iterations,
                        net.file=finalnet,
+                       silent=F,
                        expr.data=expr.data)
 
   finalnet$moduleColors = outnet$moduleColors
@@ -786,6 +787,15 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
 
   attr(finalnet,"class") <- "bootnet"
   saveRDS(finalnet,finalnet$file)
+  if(annotateFinalNet){
+    go = CoExpNets::getGProfilerOnNet(net.file=finalnet$file,
+                                      out.file=paste0(finalnet$file,"_gprof.csv"))
+
+    write.csv(CoExpNets::genAnnotationCellType(net.in=finalnet$file,
+                                               return.processed = F),
+              paste0(finalnet$file,"_celltype.csv"))
+  }
+
   return(finalnet$file)
 
 }
@@ -832,7 +842,9 @@ getDownstreamNetwork = function(tissue="mytissue",
                                 blockTOM=F,
                                 save.tom=F,
                                 save.plots=F,
-                                excludeGrey=FALSE){
+                                excludeGrey=FALSE,
+                                fullAnnotation=T,
+                                silent=T){
 
   final.net=NULL
   distance.type="cor"
@@ -863,7 +875,8 @@ getDownstreamNetwork = function(tissue="mytissue",
                                       excludeGrey=excludeGrey,
                                       additional.prefix=job.path,
                                       return.tom=T,
-                                      cor.type=cor.type)
+                                      cor.type=cor.type,
+                                      silent=silent)
 
   if(is.null(final.net))
     final.net = paste0(job.path,"/","net",tissue,".",
@@ -873,7 +886,8 @@ getDownstreamNetwork = function(tissue="mytissue",
                        net.file=net.and.tom$net,
                        expr.data=expr.data,
                        excludeGrey=excludeGrey,
-                       min.exchanged.genes = min.exchanged.genes)
+                       min.exchanged.genes = min.exchanged.genes,
+                       silent=silent)
 
 
   if(save.tom){
@@ -884,7 +898,10 @@ getDownstreamNetwork = function(tissue="mytissue",
     else
       saveRDS(net.and.tom$tom,paste0(final.net,".tom.rds"))
   }
-  outnet$adjacency = net.and.tom$adjacency
+
+  outnet$beta = net.and.tom$net$beta
+  outnet$file = final.net
+  outnet$adjacency = net.and.tom$net$adjacency
   names(outnet$moduleColors) = colnames(expr.data)
   outnet$discGenes = discGenes
 
@@ -903,7 +920,16 @@ getDownstreamNetwork = function(tissue="mytissue",
     plotEGClustering(which.one="new",tissue=final.net)
     dev.off()
   }
-  return(outnet)
+  saveRDS(outnet,final.net)
+  if(fullAnnotation){
+    go = CoExpNets::getGProfilerOnNet(net.file=final.net,
+                                      out.file=paste0(final.net,"_gprof.csv"))
+
+    write.csv(CoExpNets::genAnnotationCellType(net.in=final.net,
+                                               return.processed = F),
+              paste0(final.net,"_celltype.csv"))
+  }
+  return(final.net)
 }
 
 plotEGClustering = function(tissue,which.one){
@@ -1106,7 +1132,8 @@ applyKMeans <- function(tissue,
                         n.debug=500,
                         net.type="signed",
                         min.exchanged.genes=20,
-                        excludeGrey=F){
+                        excludeGrey=F,
+                        silent=T){
 
   if(typeof(expr.data) == "character")
     expr.data <- readRDS(expr.data)
@@ -1126,17 +1153,6 @@ applyKMeans <- function(tissue,
     net$moduleColors = net$moduleColors[1:n.debug]
   }
 
-
-  #plot.evolution.file <- paste0(final.net,"_",distance.type,"_",centroid.type,"_evolution.kmeans.pdf")
-  #partitions.file <- paste0(final.net,"_",distance.type,"_",centroid.type,"_partitions.rds")
-  #evolution.file <- paste0(final.net,"_",distance.type,"_",centroid.type,"_evolution.kmeans.rds")
-  #print(paste0("Evolution plot will be at ",plot.evolution.file))
-  #print(paste0("Partitions data will be at ",partitions.file))
-  #print(paste0("Evolution data will be at ",evolution.file))
-
-
-
-
   ##Step 1.
 
   #Gather the current partition we start from
@@ -1151,12 +1167,15 @@ applyKMeans <- function(tissue,
   #modules used (they are colours but the position within the vector is
   #also relevant)
   #centroid.labels <- substring(names(eigengenes$eigengenes),3)
-  print("Module colors are")
-  print(sort(unique(net$moduleColors)))
+  if(!silent){
+    print("Module colors are")
+    print(sort(unique(net$moduleColors)))
+  }
 
   #Step 4
   k = length(eigengenes$eigengenes)
-  cat("Working with",k,"modules/centroids\n")
+  if(!silent)
+    cat("Working with",k,"modules/centroids\n")
   #Centroids must be a matrix with as much colums as centroids,
   #as much rows as samples
   centroids = createCentroidMatrix(eigengenes$eigengenes)
@@ -1188,7 +1207,8 @@ applyKMeans <- function(tissue,
 
   new.clusters = NULL
   while(exchanged.genes > min.exchanged.genes & iteration <= n.iterations){
-    cat("k-means iteration:",iteration,"and",(n.iterations - iteration),"iterations left\n")
+    if(!silent)
+      cat("k-means iteration:",iteration,"and",(n.iterations - iteration),"iterations left\n")
     #print(corDistance)
     #print(centroids)
     #print(sum(is.na(centroids)))
@@ -1198,9 +1218,12 @@ applyKMeans <- function(tissue,
       newc = getBestModuleCor(gene=expr.data[,i],centroids,signed=(net.type == "signed"),
                               cor.type="pearson")
       if(length(newc) == 0 | is.null(newc)){
-        cat("Gene",colnames(expr.data)[i],"\n")
-        print(expr.data[,i])
-        print(newc)
+        if(!silent)
+          cat("Gene",colnames(expr.data)[i],"\n")
+        if(!silent)
+          print(expr.data[,i])
+        if(!silent)
+          print(newc)
         stop("Something wrong in the data")
       }
       new.clusters = c(new.clusters,newc)
@@ -1211,36 +1234,43 @@ applyKMeans <- function(tissue,
     #                             centroids=centroids,
     #                             signed=(net.type == "signed"),
     #                             cor.type="pearson"))
-    print(sum(is.na(expr.data)))
+    if(!silent)
+      print(sum(is.na(expr.data)))
 
-    print(table(new.clusters))
+    if(!silent)
+      print(table(new.clusters))
     new.clusters = colnames(centroids)[new.clusters]
     names(new.clusters) = geneNames
     #print(table(new.clusters))
 
-    cat("We got",length(new.clusters),"genes in partition\n")
-    cat("We got",length(unique(new.clusters)),"modules in partition\n")
+    if(!silent)
+      cat("We got",length(new.clusters),"genes in partition\n")
+    if(!silent)
+      cat("We got",length(unique(new.clusters)),"modules in partition\n")
     #print(unique(new.clusters))
     partitions[[iteration + 1]] <- new.clusters
     #Get the control values for the new partition
     exchanged.genes <- length(getExchangedGenes(partitions[[iteration]],
                                                 partitions[[iteration + 1]]))
-    cat(exchanged.genes,
+    if(!silent)
+      cat(exchanged.genes,
         "genes moved to another module by k-means\n")
-    #cat("We got",length(unique(new.partition.in.colors)),"modules in partition\n")
-    cat("We have",ncol(expr.data),"genes in expr.data\n")
-    #cat("We have",length(new.partition.in.colors),"genes in partition\n")
+    if(!silent)
+      cat("We have",ncol(expr.data),"genes in expr.data\n")
     centroids <- getNewCentroids(expr.data,new.clusters)
-    cat("We got",ncol(centroids),"new centroids\n")
+    if(!silent)
+      cat("We got",ncol(centroids),"new centroids\n")
 
 
     iteration = iteration + 1
     allgchanges = c(allgchanges,exchanged.genes)
   }
 
-  cat("We finish with",(iteration-1),"iterations\n")
+  if(!silent)
+    cat("We finish with",(iteration-1),"iterations\n")
   if(iteration > 1){
-    cat("Last number of gene changes where",exchanged.genes,"\n")
+    if(!silent)
+      cat("Last number of gene changes where",exchanged.genes,"\n")
     #saveRDS(partitions,partitions.file)
 
     net = NULL
@@ -1348,29 +1378,35 @@ getAndPlotNetworkLong <- function(expr.data,beta,
                                   excludeGrey=FALSE,
                                   max.k.cutoff = 150,
                                   r.sq.cutoff = 0.8,
-                                  cor.type="pearson"){
+                                  cor.type="pearson",
+                                  silent=T){
 
   net <- NULL
 
   if(typeof(expr.data) == "character"){
-    print(paste0("Reading expression from ",expr.data))
+    if(!silent)
+      print(paste0("Reading expression from ",expr.data))
     expr.data = readRDS(expr.data)
   }
 
-  print(paste0("We called getAndPlotNetworkLong with ",ncol(expr.data),
+  if(!silent)
+    print(paste0("We called getAndPlotNetworkLong with ",ncol(expr.data),
                " genes and ",nrow(expr.data)," samples and beta ",beta,
                " and correlation type ",cor.type,
                " and network type ", net.type," and min.cluster.size ",
                min.cluster.size, " for tissue ",tissue.name))
 
-  print(paste0("Expression data is the following within getAndPlotNetworkLong"))
-  print(expr.data[1:5,1:5])
+  if(!silent)
+    print(paste0("Expression data is the following within getAndPlotNetworkLong"))
+  if(!silent)
+    print(expr.data[1:5,1:5])
 
   #We assume gene names are at columns
   gene.names <- colnames(expr.data)
   sample.names <- rownames(expr.data)
   #Lets delete unused memory
-  print("Garbage collecting")
+  if(!silent)
+    print("Garbage collecting")
   gc()
 
   #If beta < 0 then we have to figure out by ourselves
@@ -1385,7 +1421,8 @@ getAndPlotNetworkLong <- function(expr.data,beta,
     #beta = b.study$powerEstimate
 
 
-    cat("Choosing beta from SFT.R.sq cut-off",r.sq.cutoff,"and max.k cut-off",max.k.cutoff,"\n")
+    if(!silent)
+      cat("Choosing beta from SFT.R.sq cut-off",r.sq.cutoff,"and max.k cut-off",max.k.cutoff,"\n")
     beta = min(b.study$fitIndices[as.numeric(b.study$fitIndices$SFT.R.sq) > r.sq.cutoff &
                                     as.numeric(b.study$fitIndices$slope) < 0 &
                                     as.numeric(b.study$fitIndices$max.k) > max.k.cutoff,"Power"])
@@ -1396,8 +1433,10 @@ getAndPlotNetworkLong <- function(expr.data,beta,
                                       as.numeric(b.study$fitIndices$slope) < 0,"Power"])
     }
 
-    print(paste0("The estimated beta value is ",beta))
-    print(paste0("The suggested beta was ",b.study$powerEstimate))
+    if(!silent)
+      print(paste0("The estimated beta value is ",beta))
+    if(!silent)
+      print(paste0("The suggested beta was ",b.study$powerEstimate))
 
     if(beta == -Inf & is.na(b.study$powerEstimate)){
       stop("There is something wrong, our beta is",beta,"and suggested is",
@@ -1405,21 +1444,25 @@ getAndPlotNetworkLong <- function(expr.data,beta,
     }
 
     if(is.na(b.study$powerEstimate)){
-      cat("We'll use",beta,"for beta\n")
+      if(!silent)
+        cat("We'll use",beta,"for beta\n")
 
     }else{
       if(beta == -Inf){
-        cat("We'll use WGCNA's suggested beta\n")
+        if(!silent)
+          cat("We'll use WGCNA's suggested beta\n")
         beta = b.study$powerEstimate
       }else if(beta - b.study$powerEstimate > 5){
         beta = trunc(0.5*(beta + b.study$powerEstimate))
-        cat("We'll use average between WGCNA's suggested beta and ours.\n")
+        if(!silent)
+          cat("We'll use average between WGCNA's suggested beta and ours.\n")
       }
     }
 
     if(beta == Inf){
       beta = 21
-      cat("Warning, the final beta is",beta,"and SFT is compromised\n")
+      if(!silent)
+        cat("Warning, the final beta is",beta,"and SFT is compromised\n")
     }
 
     cat("The final beta value to use is:",beta,"\n")
@@ -1429,29 +1472,36 @@ getAndPlotNetworkLong <- function(expr.data,beta,
 
   #Create the adjacency matrix of genes coming from the expression data, with the beta
   #passwd as argument
-  print("Creating adjacency matrix")
+  if(!silent)
+    print("Creating adjacency matrix")
   if(cor.type == "spearman")
     corOptions = "use = 'p', method = 'spearman'"
   else
     corOptions = "use = 'p'"
 
   adjacency = WGCNA::adjacency(expr.data, power = beta, type = net.type, corOptions = corOptions)
-  print("Created")
-  print(paste0("Adjacency is the following within getAndPlotNetworkLong"))
-  print(adjacency[1:5,1:5])
+  if(!silent)
+    print("Created")
+  if(!silent)
+    print(paste0("Adjacency is the following within getAndPlotNetworkLong"))
+  if(!silent)
+    print(adjacency[1:5,1:5])
   # Topological Overlap Matrix (TOM)
   # Turn adjacency into topological overlap
-  print("Creating TOM")
+  if(!silent)
+    print("Creating TOM")
   if(net.type == "signed")
     TOM = WGCNA::TOMsimilarity(adjacency)
   else if(net.type == "unsigned"){
-    cat("As the network type is unsigned, the TOM type we'll create is signed")
+    if(!silent)
+      cat("As the network type is unsigned, the TOM type we'll create is signed")
     TOM = WGCNA::TOMsimilarity(adjacency,TOMType="signed")
   }else{
     stop(paste0("Nework type ",net.type," unrecognized when creating the network"))
   }
   #Now we can delete adjacency
-  print("Deleting adjacency matrix")
+  if(!silent)
+    print("Deleting adjacency matrix")
   rm(adjacency)
   adjacency = apply(TOM,2,sum)
   adjacency = adjacency/length(adjacency)
@@ -1459,8 +1509,10 @@ getAndPlotNetworkLong <- function(expr.data,beta,
 
   dissTOM = 1-TOM
   rm(TOM)
-  print("Created TOM, dissTOM")
-  print(dissTOM[1:5,1:5])
+  if(!silent)
+    print("Created TOM, dissTOM")
+  if(!silent)
+    print(dissTOM[1:5,1:5])
 
 
 
@@ -1489,10 +1541,13 @@ getAndPlotNetworkLong <- function(expr.data,beta,
   }
 
   dynamicColors = WGCNA::labels2colors(dynamicMods)
-  print(table(dynamicColors))
+  if(!silent)
+    print(table(dynamicColors))
   dynamicColors = CoExpNets::dropGreyModule(dynamicColors)
-  print(tissue.name)
-  print(table(dynamicColors))
+  if(!silent)
+    print(tissue.name)
+  if(!silent)
+    print(table(dynamicColors))
 
   # Calculate eigengenes
   MEList = WGCNA::moduleEigengenes(expr.data,
@@ -1512,7 +1567,8 @@ getAndPlotNetworkLong <- function(expr.data,beta,
   mergedColors = CoExpNets::dropGreyModule(merge$colors)
   # Eigengenes of the new merged modules
   mergedMEs = merge$newMEs
-  print(table(mergedColors))
+  if(!silent)
+    print(table(mergedColors))
 
   if(save.plots){
     dendro.name = paste0(additional.prefix,"_dendro_colors.pdf")
@@ -1538,14 +1594,6 @@ getAndPlotNetworkLong <- function(expr.data,beta,
     abline(h=MEDissThres, col = "red")
     dev.off()
   }
-  #Creating the connectivity analysis
-  #expr.data.sets <- NULL
-  #expr.data.sets[[1]] <- expr.data
-  #expr.data.sets.names <- vector(mode="character",length=1)
-  #expr.data.sets.names[1] <- paste0("Tissue ",tissue.name)
-  #pdf(file=paste0(additional.prefix,"_connectivity.pdf"))
-  #connectivity(expr.data.sets,expr.data.sets.names,bethas=c(betha))
-  #def.off()
 
 
   #Prepare for creating the network objecto to return
@@ -1556,7 +1604,8 @@ getAndPlotNetworkLong <- function(expr.data,beta,
   moduleLabels = match(moduleColors, colorOrder)-1
   MEs = mergedMEs
   tb2 <- table(moduleColors)[order(table(moduleColors))]
-  print(tb2)
+  if(!silent)
+    print(tb2)
 
   if(save.plots){
     pdf(file=paste0(additional.prefix,"_mod_size.pdf"))
@@ -1626,6 +1675,7 @@ getMM = function(net=NULL,
                  which.one="rnaseq",
                  silent=F,
                  keep.grey=F,
+                 identicalNames=T, #When gene ids in expr data and net are identical
                  alt.gene.index=NULL,
                  dupAware=T){
 
@@ -1644,10 +1694,18 @@ getMM = function(net=NULL,
       expr.data = expr.data.file
   }
 
+  if(!identicalNames){
+    colnames(expr.data) = fromAny2Ensembl(colnames(expr.data))
+    names(net$moduleColors) = fromAny2Ensembl(names(net$moduleColors))
+    if(is.null(genes))
+      genes = names(net$moduleColors)
+    ens.genes = fromAny2Ensembl(genes)
+  }else{
+    if(is.null(genes))
+      genes = names(net$moduleColors)
+    ens.genes = genes
+  }
 
-  colnames(expr.data) = fromAny2Ensembl(colnames(expr.data))
-  names(net$moduleColors) = fromAny2Ensembl(names(net$moduleColors))
-  ens.genes = fromAny2Ensembl(genes)
 
   if(is.null(expr.data)){
     cat("There is no expr.data file registered for category", which.one,"and tissue",tissue,"\n")
@@ -1725,20 +1783,23 @@ getMM = function(net=NULL,
 
 
 
-corWithCatTraits = function(tissue,which.one,covlist,covs=NULL){
-  MEs = getNetworkEigengenes(tissue=tissue,which.one=which.one)
+corWithCatTraits = function(tissue,which.one,covlist,covs=NULL,retPVals=F){
   if(is.null(covs))
     covs = getCovariates(tissue=tissue,which.one=which.one)
-  covs = covs[,covlist]
+
+  if(!is.null(covlist))
+    covs = covs[,covlist,drop=F]
 
   for(i in 1:ncol(covs)){
     if(typeof(covs[,i]) ==  "character")
       covs[,i] = as.factor(covs[,i])
   }
-  factor.mask = NULL
-  for(i in 1:ncol(covs)){
-    factor.mask = c(factor.mask,is.factor(covs[,i]))
-  }
+  factor.mask = unlist(lapply(covs,is.factor))
+  cat("We will work with",sum(factor.mask),"factors\n")
+  stopifnot(sum(factor.mask) > 0)
+
+  MEs = getNetworkEigengenes(tissue=tissue,which.one=which.one)
+
 
   fcm = matrix(nrow=ncol(MEs),ncol=sum(factor.mask))
   index = 1
@@ -1761,14 +1822,23 @@ corWithCatTraits = function(tissue,which.one,covlist,covs=NULL){
     index = index + 1
   }
 
-  moduleTraitCor = cor(MEs,covs[,!factor.mask],use="p")
-
-  #Generate the p-values for significance of a given matrix of correlations, for all modules,
-  #between traits data and eigengenes, both from samples
-  moduleTraitPvalue = corPvalueStudent(moduleTraitCor,nrow(MEs))
-  moduleTraitPvalue = cbind(moduleTraitPvalue,fcm)
-  colnames(moduleTraitPvalue) = c(colnames(covs)[!factor.mask],
-                                  colnames(covs)[factor.mask])
+  if(sum(!factor.mask) > 0){
+    moduleTraitCor = cor(MEs,covs[,!factor.mask,drop=FALSE],use="p")
+    #Generate the p-values for significance of a given matrix of correlations, for all modules,
+    #between traits data and eigengenes, both from samples
+    moduleTraitPvalue = corPvalueStudent(moduleTraitCor,nrow(MEs))
+    moduleTraitPvalue = cbind(moduleTraitPvalue,fcm)
+    colnames(moduleTraitPvalue) = c(colnames(covs)[!factor.mask],
+                                    colnames(covs)[factor.mask])
+  }else{
+    moduleTraitPvalue = fcm
+    colnames(moduleTraitPvalue) = colnames(covs)[factor.mask]
+  }
+  if(retPVals)
+    toReturn = moduleTraitPvalue
+  else
+    toReturn = -log10(moduleTraitPvalue)
+  rownames(toReturn) = gsub("ME","",names(MEs))
   moduleTraitPvalue = -log10(moduleTraitPvalue)
   moduleTraitPvalue[moduleTraitPvalue > 10] = 10
   WGCNA::labeledHeatmap(Matrix=moduleTraitPvalue,
@@ -1780,6 +1850,7 @@ corWithCatTraits = function(tissue,which.one,covlist,covs=NULL){
                         cex.text=0.5,
                         zlim = c(0,10),
                         main="Module-trait relationships")
+  return(toReturn)
 }
 
 
@@ -2473,4 +2544,292 @@ testCoExpNetworks = function(){
   }
 
   cat("Success!!\n")
+}
+
+
+bottomUpNetwork = function(tissue="SNIG",
+                           which.one="micro19K",
+                           threshold=0,
+                           folder="~/tmp/",
+                           seed.genes,
+                           disease.genes=NULL,
+                           loaded=F,
+                           permutations=100,
+                           include.all.edges=F,width=20,height=12,times=7){
+
+
+  net = CoExpNets::getNetworkFromTissue(tissue=tissue,which.one=which.one)
+  expr.data = CoExpNets::getExprDataFromTissue(tissue=tissue,which.one=which.one)
+
+  cat("Disease genes will be",paste0(disease.genes,collapse=", "),"\n")
+  cat("Candidate genes will be",paste0(seed.genes,collapse=", "),"\n")
+
+  if(threshold == 0){
+    threshold = times*(length(disease.genes) + length(seed.genes))
+    cat("We'll use",threshold,"genes within the plot (",times,"times disease + seed genes)\n")
+  }else{
+    cat("We'll use",threshold,"genes within the plot \n")
+  }
+
+  biotypes = fromEnsembl2Function(fromAny2Ensembl(names(net$moduleColors)))
+  names(biotypes) = names(net$moduleColors)
+  edge.cols <- c("fromNode", "toNode", "weight", "direction", "fromAltName", "toAltName")
+  node.cols <- c("nodeName", "altName", "biotype","module","adjacency","mm","type")
+
+  #Let's prepare the naming of files
+  folder = paste0(folder,tissue,".",which.one,".")
+  if(include.all.edges)
+    folder = paste0(folder,"complete.")
+  else
+    folder = paste0(folder,"partial.")
+
+  if(!loaded){
+    tom.matrix <<- getTOMFromTissue(tissue,which.one,"signed")
+    colnames(tom.matrix) <<- names(net$moduleColors)
+    rownames(tom.matrix) <<- colnames(tom.matrix)
+    adjacencies <<- apply(tom.matrix,2,sum)
+    names(adjacencies) <<- colnames(tom.matrix)
+    mms <<- getMM(net=net,genes=NULL,expr.data.file=expr.data,tissue=tissue,
+                  which.one=which.one,in.cluster=F)
+  }else{
+    adjacencies = apply(tom.matrix,2,sum)
+    names(adjacencies) = colnames(tom.matrix)
+    initmms = CoExpNets::getMM(genes=NULL,tissue=tissue,
+                  which.one=which.one,identicalNames = T)
+    mms = initmms$mm
+    names(mms) = initmms$ensgene
+  }
+
+  knn.data = NULL
+  apriori.genes = unique(c(seed.genes,disease.genes))
+  gene.modules = unique(net$moduleColors[names(net$moduleColors) %in% apriori.genes])
+  cat("Genes are in modules",gene.modules,"\n")
+  gene.names <- names(net$moduleColors)[net$moduleColors %in% gene.modules]
+  tom.matrix.small <- tom.matrix[gene.names,gene.names]
+
+
+  the.order = order(apply(tom.matrix.small,2,sum),decreasing=T)
+  tom.matrix.small = tom.matrix.small[the.order,the.order]
+
+  all.seed.genes = apriori.genes
+  apriori.genes = apriori.genes[apriori.genes %in% colnames(tom.matrix.small)]
+  cat("Genes out of the plot will be",
+      paste0(all.seed.genes[!(all.seed.genes %in% apriori.genes)],collapse=", "),"\n")
+
+  if(threshold < length(apriori.genes)){
+    stop("We need to include",length(apriori.genes),"but the size limit is lower:",threshold,"\n")
+  }
+  rounds = 1
+  genes.included = ""
+
+  #We'll init knn.data
+  for(i in 1:length(apriori.genes))
+    knn.data[[apriori.genes[i]]] = character(0)
+
+  #We'll use a length on the rank to stop
+  rank.limit = 100
+  rank.length = 1
+  while(rank.length < rank.limit | length(genes.included) < threshold){
+    for(apriori.index in 1:length(apriori.genes)){
+      seed.gene = apriori.genes[apriori.index]
+      new.gene = colnames(tom.matrix.small)[order(tom.matrix.small[seed.gene,],decreasing=T)][rank.length]
+      if(length(genes.included) < threshold & !(new.gene %in% genes.included)){
+        genes.included = c(genes.included,new.gene)
+        cat("New gene",new.gene,"added to the plot\n")
+      }
+      knn.data[[seed.gene]] = c(knn.data[[seed.gene]],new.gene)
+    }
+    rank.length = rank.length + 1
+  }
+
+
+  if(permutations > 0){
+    #We need to generate estimates of significance for the selected genes
+    #Number of random seed genes to choose
+    random.n = length(apriori.genes)
+    #p.values for each gene included above
+    estimates = vector(mode="numeric",length=length(genes.included) - length(apriori.genes))
+    estimates[] = 0
+    names(estimates) = genes.included[!(genes.included %in% apriori.genes)]
+
+    #Permutate!!
+    for(permutation in 1:permutations){
+      rounds = 1
+      r.genes.included = NULL
+      r.apriori.genes = sample((1:ncol(tom.matrix.small))[-which(colnames(tom.matrix.small) %in% apriori.genes)],
+                               random.n)
+      while(length(r.genes.included) < threshold){
+        for(apriori.index in 1:length(r.apriori.genes)){
+          seed.gene = r.apriori.genes[apriori.index]
+          new.gene = colnames(tom.matrix.small)[order(tom.matrix.small[seed.gene,],decreasing=T)][rounds]
+          if(!(new.gene %in% r.genes.included))
+            r.genes.included = c(r.genes.included,new.gene)
+        }
+        rounds = rounds + 1
+      }
+      #Now we update estimates
+      estimates[names(estimates) %in% r.genes.included] = estimates[names(estimates) %in% r.genes.included] + 1
+    }
+    estimates = estimates/permutations
+    names(estimates) = fromAny2GeneName(names(estimates))
+  }
+
+  #Now we prepare the tom for generating the network
+  tom.matrix.small = tom.matrix.small[rownames(tom.matrix.small) %in% genes.included,
+                                      colnames(tom.matrix.small) %in% genes.included]
+  #Generate the cluster to further verify the simmilarities
+  ready.for.cluster = tom.matrix.small
+  colnames(ready.for.cluster) = fromAny2GeneName(colnames(tom.matrix.small))
+  rownames(ready.for.cluster) = colnames(ready.for.cluster)
+
+
+  edge.data <- list()
+  node.data <- list()
+
+  n.edges <- 1
+  n.nodes <- 1
+  alt.names <- fromAny2GeneName(rownames(tom.matrix.small))
+  nodes.stored <- vector(mode="logical",length=nrow(tom.matrix.small))
+
+  for(i in 1:nrow(tom.matrix.small)){
+    for(j in i:ncol(tom.matrix.small)){
+      if(i != j){
+        gene.i = rownames(tom.matrix.small)[i]
+        gene.j = rownames(tom.matrix.small)[j]
+        #Depending on the mode
+        if(include.all.edges | gene.i %in% apriori.genes | gene.j %in% apriori.genes){
+
+          edge.data[[n.edges]] <- list(fromNode=alt.names[i],toNode=alt.names[j],
+                                       weight=tom.matrix.small[i,j],
+                                       direction="undirected",
+                                       fromAltName=rownames(tom.matrix.small)[i],
+                                       toAltName=colnames(tom.matrix.small)[j])
+          n.edges <- n.edges + 1
+          if(!nodes.stored[i]){
+            gene = rownames(tom.matrix.small)[i]
+            if(gene %in% disease.genes)
+              type = "disease"
+            else if(gene %in% seed.genes)
+              type = "seed"
+            else
+              type = "context"
+
+            node.data[[n.nodes]] <- list(nodeName=alt.names[i],
+                                         altName=rownames(tom.matrix.small)[i],
+                                         biotype=biotypes[names(biotypes) == rownames(tom.matrix.small)[i]],
+                                         module=net$moduleColors[names(net$moduleColors) %in% rownames(tom.matrix.small)[i]],
+                                         adjacency=adjacencies[names(adjacencies) %in%
+                                                                 rownames(tom.matrix.small)[i]],
+                                         mm=mms[names(mms) %in% rownames(tom.matrix.small)[i]],
+                                         type = type)
+            nodes.stored[i] <- TRUE
+            n.nodes <- n.nodes + 1
+          }
+
+          if(!nodes.stored[j]){
+            gene = rownames(tom.matrix.small)[j]
+            if(gene %in% disease.genes)
+              type = "disease"
+            else if(gene %in% seed.genes)
+              type = "seed"
+            else
+              type = "context"
+            gene.biotype = biotypes[names(biotypes) %in% colnames(tom.matrix.small)[j]]
+            node.data[[n.nodes]] <- list(nodeName=alt.names[j],
+                                         altName=rownames(tom.matrix.small)[j],
+                                         biotype=gene.biotype,
+                                         module=net$moduleColors[names(net$moduleColors) %in% colnames(tom.matrix.small)[j]],
+                                         adjacency=adjacencies[names(adjacencies) %in%
+                                                                 colnames(tom.matrix.small)[j]],
+                                         mm=mms[names(mms) %in% rownames(tom.matrix.small)[j]],
+                                         type = type)
+
+            nodes.stored[j] <- TRUE
+            n.nodes <- n.nodes + 1
+          }
+        }
+      }
+
+    }
+  }
+
+  #Now we have all nodes/edges, lets save them
+  edge.matrix <- matrix(nrow=length(edge.data),ncol=length(edge.cols))
+  colnames(edge.matrix) <- names(edge.data[[1]])
+  for(i in 1:nrow(edge.matrix)){
+    edge.matrix[i,] <- unlist(edge.data[[i]])
+  }
+
+  node.matrix <- matrix(nrow=length(node.data),ncol=length(node.cols))
+  colnames(node.matrix) <- names(node.data[[1]])
+  for(i in 1:nrow(node.matrix)){
+    tryCatch(node.matrix[i,] <- unlist(node.data[[i]]),
+             error = function(e)
+             {
+               print(paste0("Processing we get error ",
+                            e$message))
+             })
+  }
+  if(permutations > 0){
+    estimates = cbind(names(estimates),estimates)
+    colnames(estimates) = c("nodeName","p.value")
+    write.table(estimates,paste0(folder,"estimates.txt"),
+                quote=FALSE,row.names=F,col.names=T)
+  }
+
+  edges.file = paste0(folder,"edges.txt")
+  nodes.file = paste0(folder,"nodes.txt")
+  write.table(edge.matrix,
+              edges.file,
+              quote=FALSE,row.names=FALSE)
+  write.table(node.matrix,
+              nodes.file,
+              quote=FALSE,row.names=FALSE)
+
+  tab.to.return = NULL
+  names(knn.data) = fromAny2GeneName(names(knn.data))
+  for(gene in names(knn.data)){
+    tab.to.return = cbind(tab.to.return,as.vector(fromAny2GeneName(knn.data[[gene]])))
+  }
+  colnames(tab.to.return) = names(knn.data)
+  write.csv(tab.to.return,paste0(folder,"knn.csv"),
+            quote=FALSE,row.names=FALSE)
+
+  return(list(edges=edges.file,nodes=nodes.file))
+
+}
+
+createTOM = function(expr.data.file,
+                     beta=11,
+                     save.as=NULL,
+                     net.type="signed",
+                     debug=F){
+
+  stopifnot(beta > 0 & beta < 40)
+  stopifnot(net.type == "signed" | net.type == "unsigned")
+
+  if(typeof(expr.data.file) == "character"){
+    print(paste0("Creating matrix ",save.as," from expression data ",expr.data.file))
+    expr.data <- readRDS(expr.data.file)
+  }else{
+    expr.data <- expr.data.file
+  }
+  cat("Creating TOM for",ncol(expr.data),"genes and",nrow(expr.data),"samples, beta",
+      beta,"and type",net.type,"\n")
+  if(debug)
+    expr.data = expr.data[,1:1000]
+  adjacency = adjacency(expr.data, power = beta, type = net.type )
+  print("Adjacency matrix created")
+  # Topological Overlap Matrix (TOM)
+  # Turn adjacency into topological overlap
+  print("Creating TOM")
+  TOM = TOMsimilarity(adjacency)
+  colnames(TOM) = colnames(expr.data)
+  rownames(TOM) = colnames(TOM)
+
+  if(!is.null(save.as)){
+    cat("Saving TOM at",save.as,"\n")
+    saveRDS(TOM,save.as)
+  }
+  else return(TOM)
 }

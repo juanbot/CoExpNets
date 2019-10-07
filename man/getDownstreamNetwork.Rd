@@ -8,7 +8,7 @@ getDownstreamNetwork(tissue = "mytissue", n.iterations = 50,
   min.exchanged.genes = 20, expr.data, beta = -1,
   job.path = "~/tmp/", min.cluster.size = 30, net.type = "signed",
   debug = F, blockTOM = F, save.tom = F, save.plots = F,
-  excludeGrey = FALSE)
+  excludeGrey = FALSE, fullAnnotation = T, silent = T)
 }
 \arguments{
 \item{tissue}{A label to use to refer to the results in files and downstream results}

@@ -28,7 +28,7 @@ Step 5.5 Finish}
 \usage{
 applyKMeans(tissue, net.file, expr.data, n.iterations = 20, debug = F,
   n.debug = 500, net.type = "signed", min.exchanged.genes = 20,
-  excludeGrey = F)
+  excludeGrey = F, silent = T)
 }
 \arguments{
 \item{tissue}{A tissue name}
