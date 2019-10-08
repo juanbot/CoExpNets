@@ -476,7 +476,20 @@ postCluster = function(handlers,
           cat("Accumulating TOM",net$tom,"\n")
           if(blockTOM){
             cat("Reading TOM\n")
-            localTOM = CoExpNets::readTOM(net$tom)
+            #localTOM = CoExpNets::readTOM(net$tom)
+            mdfile = paste0(net$tom,"_metadata.rds")
+            if(!file.exists(mdfile))
+              stop(paste0("Error: metadata file",mdfile," not found"))
+
+            metadata = readRDS(mdfile)
+            modules = names(metadata)
+            for(module in modules){
+              cat("Reading module",module,"\n")
+              smalltom = readRDS(metadata[[module]]$tomname)
+              mask = metadata[[module]]$mask
+              TOM[mask,mask] = TOM[mask,mask] + smalltom
+            }
+
             CoExpNets::removeTOM(net$tom)
           }else{
             localTOM = readRDS(net$tom)
@@ -485,13 +498,13 @@ postCluster = function(handlers,
             cat("Quantile normalization\n")
             localTOM = preprocessCore::normalize.quantiles(localTOM)
             print("Done")
-
+            if(length(net$discGenes) > 0){
+              mask = !(genes %in% net$discGenes)
+              TOM[mask,mask] = TOM[mask,mask] + localTOM
+            }else
+              TOM = TOM + localTOM
           }
-          if(length(net$discGenes) > 0){
-            mask = !(genes %in% net$discGenes)
-            TOM[mask,mask] = TOM[mask,mask] + localTOM
-          }else
-            TOM = TOM + localTOM
+
 
           rm("localTOM")
           print("Done")
