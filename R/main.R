@@ -429,7 +429,7 @@ postCluster = function(handlers,
                        min.cluster.size,
                        blockTOM=F,
                        removeTOMF=F,
-                       each=1,
+                       each=100,
                        mode,
                        waitFor=24*3600,
                        indexes,
@@ -503,11 +503,12 @@ postCluster = function(handlers,
               TOM[mask,mask] = TOM[mask,mask] + localTOM
             }else
               TOM = TOM + localTOM
+            rm("localTOM")
+            print("Done")
           }
 
 
-          rm("localTOM")
-          print("Done")
+
 
 
           tomCount = tomCount + 1
