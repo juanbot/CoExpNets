@@ -314,6 +314,8 @@ getNetworkFromTissue = function(tissue="SNIG",
                                 modules){
 
   if(which.one == "new"){
+    if(typeof(tissue) != "character")
+      return(tissue)
     cat("New network, reading from",tissue,"\n")
     return(readRDS(tissue))
 
