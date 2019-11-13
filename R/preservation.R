@@ -86,27 +86,59 @@ preservationOneWay <- function(network,
 }
 
 
-getPreservationStatisticsOneWay <- function(network,
-                                            tissues,
+getPreservationStatisticsOneWay <- function(tissues,
                                             presRes){
-
-  if(typeof(network) == "character"){
-    print(paste0("Loading network ",network," for tissue ",tissues[1]))
-    net.object = readRDS(network)
-  }else
-    net.object = network
 
   Zsummary <- NULL
   MedianRank <- NULL
 
-  tissue1 = tissues[1]
-  tissue2 = tissues[2]
+  tissue1 = paste0("ref.",tissues[1])
+  tissue2 = paste0("inColumnsAlsoPresentIn.",tissues[2])
   Z.tmp.list <- list(NULL)
   MR.tmp.list <- list(NULL)
   cat(tissue1, "\t", tissue2, "\n")
   fn	<- paste(tissue1, "vs", tissue2,sep="")
   mp = presRes
-  return(list(Z=as.data.frame(mp$preservation$Z[[1]][[2]],stringsAsFactors=F),
-              logp=as.data.frame(mp$preservation$log.pBonf[[1]][[2]],stringsAsFactors=F)))
+  return(list(Z=as.data.frame(mp$preservation$Z[[tissue1]][[tissue2]],stringsAsFactors=F),
+              logp=as.data.frame(mp$preservation$log.pBonf[[tissue1]][[tissue2]],stringsAsFactors=F)))
 
 }
+
+getZsummaryPress = function(tissues,presRes,module,statistic="Zsummary.pres"){
+  pData = getPreservationStatisticsOneWay(tissues=tissues,presRes=presRes)$Z
+  mask = rownames(pData) == module
+  return(pData[mask,statistic])
+}
+
+getMeanZsummaryPress = function(tissue,tissues,
+                                package="CoExp10UKBEC",
+                                folder="micro19K",
+                                module,
+                                statistic="Zsummary.pres"){
+  path = system.file(package = package)
+  if(path == ""){
+    cat("Can´t find package ",package,"\n")
+    return(NULL)
+
+  }
+  path = paste0(path,"/",folder)
+  means = 0
+  for(tother in tissues){
+    #THAL.mic.net.19K.rds_vs_WHMT.mic.net.19K.rds_preserv.rds
+    if(tissue < tother)
+      fpres = paste0(path,"/",tissue,".mic.net.19K.rds_vs_",tother,".mic.net.19K.rds_preserv.rds")
+    else
+      fpres = paste0(path,"/",tother,".mic.net.19K.rds_vs_",tissue,".mic.net.19K.rds_preserv.rds")
+
+    tlist = c(tissue,tother)
+    cat("Reading from",fpres,"\n")
+    partial = getZsummaryPress(tissues=tlist,
+                               presRes=readRDS(fpres),
+                               module=module,
+                               statistic=statistic)
+    print(partial)
+    means = means + partial
+  }
+  return(means/length(tissues))
+}
+
