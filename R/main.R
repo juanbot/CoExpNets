@@ -3417,6 +3417,27 @@ createTOM = function(expr.data.file,
   else return(TOM)
 }
 
+getModuleTOMGraph = function(tissue,
+                             which.one,
+                             module,
+                             topgenes,...){
+  tom = getModuleTOM(tissue=tissue,
+                     which.one=which.one,
+                     module=module,
+                     ...)
+  if(is.null(tom) | typeof(tom) == "character") return(tom)
+
+  topgenes = min(topgenes,ncol(tom))
+
+  adjs = order(apply(tom,2,sum),decreasing=T)[1:topgenes]
+  tom = tom[adjs,adjs]
+  colnames(tom) = CoExpNets::fromAny2GeneName(colnames(tom))
+  rownames(tom) = colnames(tom)
+  tom = cbind(Gene=rownames(tom),tom)
+  return(tom)
+}
+
+
 getModuleTOM = function(tissue,
                         out.path,
                         module,
@@ -3431,7 +3452,8 @@ getModuleTOM = function(tissue,
   netf = getNetworkFromTissue(tissue=tissue,
                               which.one=which.one,
                               only.file = T)
-
+  netf = basename(netf)
+  print(out.path)
   tfile = paste0(out.path,"/",netf,".",module,".tom.rds")
 
   if(only.file){
