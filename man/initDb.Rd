@@ -6,6 +6,9 @@
 \usage{
 initDb()
 }
+\value{
+
+}
 \description{
 Title
 }

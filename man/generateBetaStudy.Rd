@@ -4,11 +4,20 @@
 \alias{generateBetaStudy}
 \title{Title}
 \usage{
-generateBetaStudy(expr.data, powers = c(1:30), title = NULL,
-  plot.file = NULL, net.type = "signed", cor.type = "pearson")
+generateBetaStudy(
+  expr.data,
+  powers = c(1:30),
+  title = NULL,
+  plot.file = NULL,
+  net.type = "signed",
+  cor.type = "pearson"
+)
 }
 \arguments{
 \item{cor.type}{}
+}
+\value{
+
 }
 \description{
 Title

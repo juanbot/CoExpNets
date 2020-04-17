@@ -4,11 +4,18 @@
 \alias{fromEntrez2Ensembl}
 \title{Title}
 \usage{
-fromEntrez2Ensembl(genes, table.file = biotype.all.file,
-  ignore.unknown = FALSE, which.are.unknown = FALSE)
+fromEntrez2Ensembl(
+  genes,
+  table.file = biotype.all.file,
+  ignore.unknown = FALSE,
+  which.are.unknown = FALSE
+)
 }
 \arguments{
 \item{which.are.unknown}{}
+}
+\value{
+
 }
 \description{
 Title

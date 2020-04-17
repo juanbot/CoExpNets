@@ -4,11 +4,13 @@
 \alias{getCellTypeFromTissue}
 \title{Title}
 \usage{
-getCellTypeFromTissue(tissue = "SNIG", which.one = "rnaseq",
-  module = NULL)
+getCellTypeFromTissue(tissue = "SNIG", which.one = "rnaseq", module = NULL)
 }
 \arguments{
 \item{module}{}
+}
+\value{
+
 }
 \description{
 Title

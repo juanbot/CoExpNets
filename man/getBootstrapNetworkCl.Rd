@@ -4,15 +4,31 @@
 \alias{getBootstrapNetworkCl}
 \title{Title}
 \usage{
-getBootstrapNetworkCl(mode = c("leaveoneout", "bootstrap"), expr.data,
-  n.iterations = 50, removeTOMF = F, job.path,
-  min.cluster.size = 100, allsampsnet = F, each = 1,
-  tissue = "Bootstrap", blockTOM = F, clParams = " -l nodes=1:nv ",
-  clParamsPost = clParams, waitFor = 24 * 3600, batchSize = 1000,
-  timePerBatch = 1800, b = 10, ...)
+getBootstrapNetworkCl(
+  mode = c("leaveoneout", "bootstrap"),
+  expr.data,
+  n.iterations = 50,
+  removeTOMF = F,
+  job.path,
+  min.cluster.size = 100,
+  allsampsnet = F,
+  each = 1,
+  tissue = "Bootstrap",
+  blockTOM = F,
+  clParams = "-l h_rt=72:0:0 -l tmem=16.9G,h_vmem=16.9G",
+  clParamsPost = clParams,
+  waitFor = 24 * 3600,
+  batchSize = 1000,
+  timePerBatch = 1800,
+  b = 10,
+  ...
+)
 }
 \arguments{
 \item{waitFor}{}
+}
+\value{
+
 }
 \description{
 Title

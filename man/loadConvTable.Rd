@@ -6,6 +6,9 @@
 \usage{
 loadConvTable()
 }
+\value{
+
+}
 \description{
 Title
 }

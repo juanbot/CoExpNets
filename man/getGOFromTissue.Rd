@@ -9,6 +9,9 @@ getGOFromTissue(tissue = "SNIG", which.one = "rnaseq", module = NULL)
 \arguments{
 \item{module}{}
 }
+\value{
+
+}
 \description{
 Title
 }

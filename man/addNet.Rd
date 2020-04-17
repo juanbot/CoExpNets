@@ -21,6 +21,9 @@ addNet(which.one, tissue, netfile, ctfile, gofile, exprdatafile, overwrite)
 
 \item{overwrite}{If TRUE and the network is already added, it overwrites the contents}
 }
+\value{
+
+}
 \description{
 Title
 }

@@ -4,10 +4,21 @@
 \alias{addNetworkToDDBB}
 \title{Title}
 \usage{
-addNetworkToDDBB(netf, folder, which.one, tissue, rewrite = F,
-  filter = c("GO", "KEGG", "REAC", "HP"), ensembl = TRUE, do.go = T,
-  do.ct = T, exclude.iea = T, correction.method = "gSCS",
-  organism = "hsapiens", out.file = paste0(netf, "_gprofiler.csv"))
+addNetworkToDDBB(
+  netf,
+  folder,
+  which.one,
+  tissue,
+  rewrite = F,
+  filter = c("GO", "KEGG", "REAC", "HP"),
+  ensembl = TRUE,
+  do.go = T,
+  do.ct = T,
+  exclude.iea = T,
+  correction.method = "gSCS",
+  organism = "hsapiens",
+  out.file = paste0(netf, "_gprofiler.csv")
+)
 }
 \arguments{
 \item{netf}{The RDS file produced by getDownstreamNetwork()}

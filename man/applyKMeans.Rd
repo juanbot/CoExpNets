@@ -26,14 +26,26 @@ Step 5.4 Evaluate the progress. If progress done, set iterations to iterations +
 C to E' and go to step 5.2
 Step 5.5 Finish}
 \usage{
-applyKMeans(tissue, net.file, expr.data, n.iterations = 20, debug = F,
-  n.debug = 500, net.type = "signed", min.exchanged.genes = 20,
-  excludeGrey = F, silent = T)
+applyKMeans(
+  tissue,
+  net.file,
+  expr.data,
+  n.iterations = 20,
+  debug = F,
+  n.debug = 500,
+  net.type = "signed",
+  min.exchanged.genes = 20,
+  excludeGrey = F,
+  silent = T
+)
 }
 \arguments{
 \item{tissue}{A tissue name}
 
 \item{cor.type}{}
+}
+\value{
+
 }
 \description{
 Title K-means refinement process after getting TOM and clusters from `WGCNA`

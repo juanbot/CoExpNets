@@ -6,9 +6,18 @@
 This function works by getting the Pearson correlation between the
 eigengene of the module and the gene(s).}
 \usage{
-getMM(net = NULL, expr.data.file = NULL, tissue, genes,
-  which.one = "rnaseq", silent = F, keep.grey = F,
-  identicalNames = T, alt.gene.index = NULL, dupAware = T)
+getMM(
+  net = NULL,
+  expr.data.file = NULL,
+  tissue,
+  genes,
+  which.one = "rnaseq",
+  silent = F,
+  keep.grey = F,
+  identicalNames = T,
+  alt.gene.index = NULL,
+  dupAware = T
+)
 }
 \arguments{
 \item{net}{The network can be either and object or a file}

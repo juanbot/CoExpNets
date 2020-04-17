@@ -9,6 +9,9 @@ fromGeneName2EnsemblBM(genes, use38 = T)
 \arguments{
 \item{use38}{}
 }
+\value{
+
+}
 \description{
 Title
 }

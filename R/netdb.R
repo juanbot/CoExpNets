@@ -311,12 +311,14 @@ getNetworkFromTissue = function(tissue="SNIG",
                                 which.one="exonic",
                                 only.file=F,
                                 genes=NULL,
+                                silent=T,
                                 modules){
 
   if(which.one == "new"){
     if(typeof(tissue) != "character")
       return(tissue)
-    cat("New network, reading from",tissue,"\n")
+    if(!silent)
+      cat("New network, reading from",tissue,"\n")
     return(readRDS(tissue))
 
   }
@@ -333,11 +335,13 @@ getNetworkFromTissue = function(tissue="SNIG",
   file = findNet(which.one=which.one,tissue=tissue)
   if(is.null(file))
     return(NULL)
-  cat("Reading from",file,"\n")
+  if(!silent)
+    cat("Reading from",file,"\n")
   if(only.file)
     return(file)
   else return(readRDS(file))
-  cat(paste0("When getting the network for tissue ",tissue," we don't know ",which.one,"\nReturning NULL\n"))
+  if(!silent)
+    cat(paste0("When getting the network for tissue ",tissue," we don't know ",which.one,"\nReturning NULL\n"))
   return(NULL)
 }
 
@@ -530,11 +534,8 @@ getCellTypeFromTissue = function(tissue="SNIG",which.one="rnaseq",module=NULL){
       names(ctvec) = ct[,1]
       return(ctvec)
     }
-
     else return(ct)
   }
-
-
   cat(paste0("When getting the network cell type signals for tissue ",tissue,
              " we don't know ",which.one,"\nReturning NULL\n"))
   return(NULL)

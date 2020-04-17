@@ -9,6 +9,9 @@ removeTOM(filepref)
 \arguments{
 \item{filepref}{}
 }
+\value{
+
+}
 \description{
 Title Managing big TOM matrices
 }

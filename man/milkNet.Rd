@@ -9,6 +9,9 @@ milkNet(net, folder)
 \arguments{
 \item{folder}{}
 }
+\value{
+
+}
 \description{
 Title
 }

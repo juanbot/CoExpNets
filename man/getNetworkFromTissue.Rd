@@ -4,11 +4,19 @@
 \alias{getNetworkFromTissue}
 \title{getNetworkFromTissue - Get predefined network or create yours}
 \usage{
-getNetworkFromTissue(tissue = "SNIG", which.one = "exonic",
-  only.file = F, genes = NULL, modules)
+getNetworkFromTissue(
+  tissue = "SNIG",
+  which.one = "exonic",
+  only.file = F,
+  genes = NULL,
+  modules
+)
 }
 \arguments{
 \item{modules}{}
+}
+\value{
+
 }
 \description{
 getNetworkFromTissue - Get predefined network or create yours

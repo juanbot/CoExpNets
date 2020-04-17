@@ -4,13 +4,28 @@
 \alias{getBootstrapNetwork}
 \title{Title}
 \usage{
-getBootstrapNetwork(mode = c("leaveoneout", "bootstrap"), expr.data,
-  n.iterations = 50, job.path, allsampsnet = F, excludeGrey = F,
-  each = 1, blockTOM = F, removeTOMF = F, min.cluster.size = 100,
-  tissue = "Bootstrap", b = 10, ...)
+getBootstrapNetwork(
+  mode = c("leaveoneout", "bootstrap"),
+  expr.data,
+  n.iterations = 50,
+  job.path,
+  allsampsnet = F,
+  excludeGrey = F,
+  annotateFinalNet = F,
+  each = 1,
+  blockTOM = F,
+  removeTOMF = F,
+  min.cluster.size = 100,
+  tissue = "Bootstrap",
+  b = 10,
+  ...
+)
 }
 \arguments{
 \item{...}{}
+}
+\value{
+
 }
 \description{
 Title

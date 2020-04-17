@@ -9,6 +9,9 @@ dropGreyModule(colors, gcolor = "grey")
 \arguments{
 \item{gcolor}{}
 }
+\value{
+
+}
 \description{
 Title
 }

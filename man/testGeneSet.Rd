@@ -4,11 +4,20 @@
 \alias{testGeneSet}
 \title{Title}
 \usage{
-testGeneSet(n.module, n.module.and.specific, total.specific, total.net,
-  test = "fisher", oldform = F)
+testGeneSet(
+  n.module,
+  n.module.and.specific,
+  total.specific,
+  total.net,
+  test = "fisher",
+  oldform = F
+)
 }
 \arguments{
 \item{oldform}{}
+}
+\value{
+
 }
 \description{
 Title

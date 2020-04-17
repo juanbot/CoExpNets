@@ -9,6 +9,9 @@ getGOFromTissues(tissues, which.ones, modules)
 \arguments{
 \item{modules}{}
 }
+\value{
+
+}
 \description{
 Title
 }

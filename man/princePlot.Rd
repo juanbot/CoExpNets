@@ -4,16 +4,34 @@
 \alias{princePlot}
 \title{Title}
 \usage{
-princePlot(prince, label = colnames(prince$o), smallest = -20,
-  note = F, notecol = "black", notecex = 1, breaks = seq(-20, 0,
-  length.out = 100), col = heat.colors(99), margins = c(5, 7),
-  key = T, cexRow = 1, cexCol = 1,
-  xlab = "Principal Components (Variation)", colsep = NULL,
-  rowsep = NULL, sepcolor = "black", sepwidth = c(0.05, 0.05),
-  Rsquared = F, breaksRsquared = seq(0, 1, length.out = 100), main)
+princePlot(
+  prince,
+  label = colnames(prince$o),
+  smallest = -20,
+  note = F,
+  notecol = "black",
+  notecex = 1,
+  breaks = seq(-20, 0, length.out = 100),
+  col = heat.colors(99),
+  margins = c(5, 7),
+  key = T,
+  cexRow = 1,
+  cexCol = 1,
+  xlab = "Principal Components (Variation)",
+  colsep = NULL,
+  rowsep = NULL,
+  sepcolor = "black",
+  sepwidth = c(0.05, 0.05),
+  Rsquared = F,
+  breaksRsquared = seq(0, 1, length.out = 100),
+  main
+)
 }
 \arguments{
 \item{main}{}
+}
+\value{
+
 }
 \description{
 Title

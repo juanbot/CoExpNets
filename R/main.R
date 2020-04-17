@@ -948,6 +948,9 @@ getDownstreamNetwork = function(tissue="mytissue",
                                       cor.type=cor.type,
                                       silent=silent)
 
+  if(is.null(net.and.tom))
+    return(net.and.tom)
+
   if(is.null(final.net))
     final.net = paste0(job.path,"/","net",tissue,".",
                        net.and.tom$net$beta,".it.",n.iterations,".rds")
@@ -974,7 +977,7 @@ getDownstreamNetwork = function(tissue="mytissue",
   outnet$adjacency = net.and.tom$net$adjacency
   names(outnet$moduleColors) = colnames(expr.data)
   outnet$discGenes = discGenes
-
+  saveRDS(outnet,final.net)
   if(save.tom){
     if(blockTOM)
       outnet$tom = paste0(final.net,".tom.")
@@ -990,7 +993,6 @@ getDownstreamNetwork = function(tissue="mytissue",
     plotEGClustering(which.one="new",tissue=final.net)
     dev.off()
   }
-  saveRDS(outnet,final.net)
   if(fullAnnotation){
     go = CoExpNets::getGProfilerOnNet(net.file=final.net,
                                       out.file=paste0(final.net,"_gprof.csv"))
@@ -1002,133 +1004,7 @@ getDownstreamNetwork = function(tissue="mytissue",
   return(final.net)
 }
 
-#' getDownstreamNetwork - Create a network
-#'
-#' @param tissue A label to use to refer to the results in files and downstream results
-#' @param n.iterations Number of iterations in the k-means algorithm to refine the
-#' clustering process
-#' @param expr.data A data frame with expression data, ready to get into WGCNA. Columns
-#' are genes and rows are samples. Column names will be used as gene names in the
-#' analysis product
-#' @param beta The smoothing parameter of the WGCNA pipeline. If -1, then the method
-#' will suggest one automatically by looking at the R2 between gene connectivity and
-#' Scale Free Topology features
-#' @param job.path This method will generate a number of files. It needs a folder to write
-#' results
-#' @param min.cluster.size Minimum number of genes for a group to be considered as cluster
-#' for the tree cutting algorithm to convert from a dendogram to a cluster.
-#' @param net.type Whether a signed ("signed") or unsigned ("unsigned") network type will be created
-#' @param debug Set this to true if you want a quick run of the method to test how it works with
-#' a small amount of your genes
-#' @param excludeGrey If WGCNA detects grey genes, set it to TRUE if you want them removed
-#' from the network before applying k-means
-#'
-#' @return A file name that can be used to access your network
-#' @export
-#'
-#' @examples
-getSCDownstreamNetwork = function(tissue="mytissue",
-                                  n.iterations=50,	#Number of iterations for k-means, 50 recommended
-                                  min.exchanged.genes=20,
-                                  alg="TOM",
-                                  beta=-1,
-                                  expr.data, 	#We expect a file name pointing to a dataframe (RDS format) with
-                                  #genes in columns and samples in rows. Each gene name appears
-                                  #in the column name. Better to use gene symbols as names
-                                  job.path="~/tmp/",	#Where to store all results
-                                  min.cluster.size=30,		#Minimum number of genes to form a cluster
-                                  net.type="signed",			#Leave it like that (see WGCNA docs)
-                                  debug=F,
-                                  save.plots=F,
-                                  excludeGrey=FALSE,
-                                  fullAnnotation=T,
-                                  silent=T){
 
-  final.net=NULL
-  distance.type="cor"
-  centroid.type="pca"
-  cor.type="pearson"
-
-  if(debug){
-    if(typeof(expr.data) == "character")
-      expr.data = readRDS(expr.data)
-    expr.data = expr.data[,1:1500]
-    n.iterations=5
-  }
-
-  validgenes = unlist(apply(expr.data,2,function(x){
-    return(var(x) != 0)
-  }))
-  if(sum(validgenes) < ncol(expr.data))
-    cat("There are genes with 0 variance:",
-        paste0(colnames(expr.data)[!validgenes],collapse=","),"\n")
-  discGenes = colnames(expr.data)[!validgenes]
-  expr.data = expr.data[,validgenes]
-
-  if(alg == "singlecell")
-    net = getAndPlotSCNetworkLong(expr.data=expr.data,
-                                  tissue.name=tissue,
-                                  min.cluster.size=min.cluster.size,
-                                  save.plots=save.plots,
-                                  excludeGrey=excludeGrey,
-                                  additional.prefix=job.path,
-                                  cor.type=cor.type,
-                                  silent=silent)
-  else if(alg == "notom")
-    net = getAndPlotSCNoTOMNetworkLong(expr.data=expr.data,
-                                       tissue.name=tissue,
-                                       beta=beta,
-                                       min.cluster.size=min.cluster.size,
-                                       save.plots=save.plots,
-                                       excludeGrey=excludeGrey,
-                                       additional.prefix=job.path,
-                                       cor.type=cor.type,
-                                       silent=silent)
-  else
-    stop("Algorithm type for network creation not recognised")
-
-  if(is.null(net))
-    return(net)
-  if(is.null(final.net))
-    final.net = paste0(job.path,"/","net",tissue,".",
-                       net$beta,".it.",n.iterations,".rds")
-
-  outnet = applyKMeans(tissue=tissue,
-                       n.iterations=n.iterations,
-                       net.file=net,
-                       expr.data=expr.data,
-                       excludeGrey=excludeGrey,
-                       min.exchanged.genes = min.exchanged.genes,
-                       silent=silent)
-
-
-
-  outnet$beta = NA
-  outnet$file = final.net
-  outnet$adjacency = NA
-  names(outnet$moduleColors) = colnames(expr.data)
-  outnet$discGenes = discGenes
-  saveRDS(outnet,final.net)
-
-  if(save.plots){
-    cat("Generating mod sizes for",final.net,"\n")
-    pdf(paste0(final.net,".mod_size.pdf"))
-    plotModSizes(which.one="new",tissue=final.net)
-    dev.off()
-    pdf(paste0(final.net,".Eigengenes_clustering.pdf"))
-    plotEGClustering(which.one="new",tissue=final.net)
-    dev.off()
-  }
-  if(fullAnnotation){
-    go = CoExpNets::getGProfilerOnNet(net.file=final.net,
-                                      out.file=paste0(final.net,"_gprof.csv"))
-
-    write.csv(CoExpNets::genAnnotationCellType(net.in=final.net,
-                                               return.processed = F),
-              paste0(final.net,"_celltype.csv"))
-  }
-  return(final.net)
-}
 
 plotEGClustering = function(tissue,which.one){
   net = CoExpNets::getNetworkFromTissue(tissue=tissue,which.one=which.one)
@@ -1746,7 +1622,8 @@ getAndPlotNetworkLong <- function(expr.data,beta,
 
   if(n.mods <= 3){
     print(table(dynamicMods))
-    stop(paste0("There are only ",n.mods," modules in the network. Makes no sense to continue"))
+    print(paste0("There are only ",n.mods," modules in the network. Makes no sense to continue"))
+    return(NULL)
   }
   dynamicColors = WGCNA::labels2colors(dynamicMods)
   if(!silent)
@@ -1792,8 +1669,8 @@ getAndPlotNetworkLong <- function(expr.data,beta,
 
     pdf(file=eigengenes.name)
     # Plot the result
-    tb <- tb[ METree$labels ]
-    METree$labels <- paste0(names(tb), ":", tb)
+    #tb <- tb[ METree$labels ]
+    #METree$labels <- paste0(names(tb), ":", tb)
 
     plot(METree, main = paste0(title," ",tissue.name,
                                " Clustering of module eigengenes"),
@@ -1840,380 +1717,8 @@ getAndPlotNetworkLong <- function(expr.data,beta,
     return(net)
 }
 
-getAndPlotSCNoTOMNetworkLong <- function(expr.data,beta,
-                                         net.type="signed",
-                                         tissue.name="MyTissue",
-                                         title=NULL,
-                                         additional.prefix=NULL,
-                                         min.cluster.size=100,
-                                         save.plots=TRUE,
-                                         return.tom=FALSE,
-                                         excludeGrey=FALSE,
-                                         max.k.cutoff = 150,
-                                         r.sq.cutoff = 0.8,
-                                         cor.type="pearson",
-                                         silent=T){
-
-  net <- NULL
-
-  if(typeof(expr.data) == "character"){
-    if(!silent)
-      print(paste0("Reading expression from ",expr.data))
-    expr.data = readRDS(expr.data)
-  }
-
-  if(!silent)
-    print(paste0("We called getAndPlotNetworkLong with ",ncol(expr.data),
-                 " genes and ",nrow(expr.data)," samples and beta ",beta,
-                 " and correlation type ",cor.type,
-                 " and network type ", net.type," and min.cluster.size ",
-                 min.cluster.size, " for tissue ",tissue.name))
-
-  if(!silent)
-    print(paste0("Expression data is the following within getAndPlotNetworkLong"))
-  if(!silent)
-    print(expr.data[1:5,1:5])
-
-  #We assume gene names are at columns
-  gene.names <- colnames(expr.data)
-  sample.names <- rownames(expr.data)
-  #Lets delete unused memory
-  if(!silent)
-    print("Garbage collecting")
-  gc()
-
-  #If beta < 0 then we have to figure out by ourselves
-  if(beta < 0){
-    if(save.plots){
-      b.study = generateBetaStudy(expr.data,title=paste0("Beta study for ",tissue.name),
-                                  net.type=net.type,cor.type=cor.type,
-                                  plot.file=paste0(additional.prefix,
-                                                   "betastudy",gsub(" ","_",tissue.name),".",net.type,".pdf"))
-    }else
-      b.study = generateBetaStudy(expr.data,net.type=net.type,cor.type=cor.type)
-    #beta = b.study$powerEstimate
 
 
-    if(!silent)
-      cat("Choosing beta from SFT.R.sq cut-off",r.sq.cutoff,"and max.k cut-off",max.k.cutoff,"\n")
-    beta = min(b.study$fitIndices[as.numeric(b.study$fitIndices$SFT.R.sq) > r.sq.cutoff &
-                                    as.numeric(b.study$fitIndices$slope) < 0 &
-                                    as.numeric(b.study$fitIndices$max.k) > max.k.cutoff,"Power"])
-
-    if(beta == Inf){
-      #OK, lets drop-off the maxk.cutoff
-      beta = min(b.study$fitIndices[as.numeric(b.study$fitIndices$SFT.R.sq) > r.sq.cutoff &
-                                      as.numeric(b.study$fitIndices$slope) < 0,"Power"])
-    }
-
-    if(!silent)
-      print(paste0("The estimated beta value is ",beta))
-    if(!silent)
-      print(paste0("The suggested beta was ",b.study$powerEstimate))
-
-    if(beta == -Inf & is.na(b.study$powerEstimate)){
-      stop("There is something wrong, our beta is",beta,"and suggested is",
-           b.study$powerEstimate,"\n")
-    }
-
-    if(is.na(b.study$powerEstimate)){
-      if(!silent)
-        cat("We'll use",beta,"for beta\n")
-
-    }else{
-      if(beta == -Inf){
-        if(!silent)
-          cat("We'll use WGCNA's suggested beta\n")
-        beta = b.study$powerEstimate
-      }else if(beta - b.study$powerEstimate > 5){
-        beta = trunc(0.5*(beta + b.study$powerEstimate))
-        if(!silent)
-          cat("We'll use average between WGCNA's suggested beta and ours.\n")
-      }
-    }
-
-    if(beta == Inf){
-      beta = 21
-      if(!silent)
-        cat("Warning, the final beta is",beta,"and SFT is compromised\n")
-    }
-
-    cat("The final beta value to use is:",beta,"\n")
-  }
-  additional.prefix = paste0(additional.prefix,tissue.name,".",beta)
-
-  #Create the adjacency matrix of genes coming from the expression data, with the beta
-  #passwd as argument
-  if(!silent)
-    print("Creating adjacency matrix")
-  if(cor.type == "spearman")
-    corOptions = "use = 'p', method = 'spearman'"
-  else
-    corOptions = "use = 'p'"
-
-  adjacency = WGCNA::adjacency(expr.data, power = beta,
-                               type = net.type, corOptions = corOptions)
-
-  dissTOM = 1-adjacency
-  if(!silent)
-    print("Created TOM, dissTOM")
-  if(!silent)
-    print(dissTOM[1:5,1:5])
-
-  geneTree = flashClust::flashClust(as.dist(dissTOM), method = "average")
-
-  print("Now the genetree")
-  print(geneTree)
-  # Dynamic Tree Cut
-  # We like large modules, so we set the minimum module size relatively high
-  # Module identification using dynamic tree cut
-
-  n.mods = 0
-  deep.split = 2
-  dynamicMods = dynamicTreeCut::cutreeDynamic(dendro = geneTree,
-                                              method="tree",
-                                              distM = dissTOM,
-                                              deepSplit = TRUE,
-                                              minClusterSize = min.cluster.size)
-  n.mods = length(table(dynamicMods))
-  dynamicColors = WGCNA::labels2colors(dynamicMods)
-  if(n.mods == 1 | (n.mods == 2 & "grey" %in% dynamicColors)){
-    print(table(dynamicMods))
-    return(NULL)
-  }
-
-  if(!silent)
-    print(table(dynamicColors))
-  dynamicColors = CoExpNets::dropGreyModule(dynamicColors)
-  if(!silent)
-    print(tissue.name)
-  if(!silent)
-    print(table(dynamicColors))
-
-  # Calculate eigengenes
-  MEList = WGCNA::moduleEigengenes(expr.data,
-                                   colors = dynamicColors,
-                                   excludeGrey=excludeGrey)
-  MEs = MEList$eigengenes
-  # Calculate dissimilarity of module eigengenes
-  MEDiss = 1-cor(MEs,use = "pairwise.complete.obs")
-  # Cluster module eigengenes
-  METree = flashClust::flashClust(as.dist(MEDiss), method = "average")
-
-  if(save.plots){
-    dendro.name = paste0(additional.prefix,"_dendro_colors.pdf")
-    eigengenes.name = paste0(additional.prefix,"_Eigengenes_clustering.pdf")
-
-    pdf(file=dendro.name)
-    WGCNA::plotDendroAndColors(geneTree, dynamicColors,
-                               "Dynamic Tree Cut",
-                               dendroLabels = FALSE,
-                               hang = 0.03, addGuide = TRUE,
-                               guideHang = 0.05,main=title)
-    dev.off()
-
-    pdf(file=eigengenes.name)
-    # Plot the result
-    tb = dynamicColors
-    tb <- tb[ METree$labels ]
-    METree$labels <- paste0(names(tb), ":", tb)
-
-    plot(METree, main = paste0(title," ",tissue.name,
-                               " Clustering of module eigengenes"),
-         xlab = "", sub = "")
-    dev.off()
-  }
-
-
-  #Prepare for creating the network objecto to return
-  # Rename to moduleColors
-  moduleColors = dynamicColors
-  # Construct numerical labels corresponding to the colors
-  colorOrder = c("grey", WGCNA::standardColors(400) )
-  moduleLabels = match(moduleColors, colorOrder)-1
-  tb2 <- table(moduleColors)[order(table(moduleColors))]
-  if(!silent)
-    print(tb2)
-
-  if(save.plots){
-    pdf(file=paste0(additional.prefix,"_mod_size.pdf"))
-    barplot.title <- paste0("Mod. sizes for ",length(unique(moduleColors)),
-                            " modules and ",title)
-    barplot(tb2,col=names(tb2),
-            main=barplot.title,
-            xlab="Mod colors",ylab="Mod size")
-    dev.off()
-  }
-  adjacency = apply(adjacency,2,sum)
-  adjacency = adjacency/length(adjacency)
-  names(adjacency) = colnames(expr.data)
-
-  net$MEs <- MEs
-  rownames(net$MEs) <- sample.names
-  net$moduleLabels <- moduleLabels
-  net$moduleColors <- moduleColors
-  net$adjacency = adjacency
-  net$beta = beta
-  net$type = net.type
-  names(net$moduleColors) <- gene.names
-  net$geneTree <- geneTree
-  return(net)
-}
-
-#' Title Create a WGCNA network + TOM + some plots
-#' If you are not interested in the k-means or before getting into that you want to
-#' have a look at the basic WGCNA network use this method
-#'
-#' @param expr.data Aan object or a file, genes at columns, samples at rows.
-#' The network net$moduleColors vector will be generated as genes are in the data.frame.
-#' @param beta If beta is < 0 then it is obtained automatically. You can set your own.
-#' @param net.type Either "signed" or "unsigned" for easier or trickier MM values interpretation
-#' @param tissue.name The label you want the code to use for naming the network
-#' @param title For possible plots
-#' @param additional.prefix Something you want to add to the naming of files generated to avoid
-#' potential clashes
-#' @param min.cluster.size Minimum number of genes for a group of them to be a cluster
-#' @param save.plots You want plots?
-#' @param return.tom Set this to TRUE if you want the TOM returned with the rest of stuff (it may be really big)
-#' @param excludeGrey Discard grey genes from the result network
-#' @param max.k.cutoff Connectivity parameter
-#' @param r.sq.cutoff Only beta values above this value for the adjusted linear regression model are
-#' considered
-#' @param cor.type Values in "pearson", "kendall", "spearman"
-#'
-#' @return If all goes well, a network with the following elements (as a list)
-#' * MEs will be a matrix with the eigengenes (columns) and the values for each sample (rows)
-#' * moduleLabels A vector of labels corresponding to into which cluster each gene is.
-#' labels appear in the same order as genes were disposed in the expression data matrix
-#' * moduleColors A vector of colors corresponding to into which cluster each gene is. Useful to
-#' refer to each module with a color and to signal them at plots. The vector is named with the
-#' genes and they appear in the same order as genes were disposed in the expression data matrix
-#' beta Is the beta value used
-#' type The type of network as in "signed" or "unsigned"
-#' geneTree The dendrogram from which the partition was generated
-#' @export
-#'
-#' @examples
-getAndPlotSCNetworkLong <- function(expr.data,beta,
-                                    net.type="scell",
-                                    tissue.name="MyTissue",
-                                    title=NULL,
-                                    additional.prefix=NULL,
-                                    min.cluster.size=100,
-                                    save.plots=TRUE,
-                                    excludeGrey=FALSE,
-                                    max.k.cutoff = 150,
-                                    cor.type="pearson",
-                                    silent=T){
-
-  net <- NULL
-
-  if(typeof(expr.data) == "character"){
-    if(!silent)
-      print(paste0("Reading expression from ",expr.data))
-    expr.data = readRDS(expr.data)
-  }
-
-  if(!silent)
-    print(paste0("We called getAndPlotSCNetworkLong with ",ncol(expr.data),
-                 " genes and ",nrow(expr.data)," samples and network type scell and min.cluster.size ",
-                 min.cluster.size, " for tissue ",tissue.name))
-
-  if(!silent)
-    print(paste0("Expression data is the following within getAndPlotSCNetworkLong"))
-  if(!silent)
-    print(expr.data[1:5,1:5])
-
-  #We assume gene names are at columns
-  gene.names <- colnames(expr.data)
-  sample.names <- rownames(expr.data)
-  #Lets delete unused memory
-  if(!silent)
-    print("Garbage collecting")
-  gc()
-
-  cat("Creating now clustering with expression\n")
-  expr.data.dist = dist(t(expr.data))
-  geneTree = flashClust::flashClust(expr.data.dist, method = "average")
-
-  if(!silent)
-    print("Created")
-
-  print("Now the genetree")
-  print(geneTree)
-  # Dynamic Tree Cut
-  # We like large modules, so we set the minimum module size relatively high
-  # Module identification using dynamic tree cut
-
-  n.mods = 0
-  deep.split = 2
-  while(n.mods < 10 & deep.split < 5){
-    dynamicMods = dynamicTreeCut::cutreeDynamic(dendro = geneTree,
-                                                distM = as.matrix(expr.data.dist),
-                                                deepSplit = deep.split,
-                                                pamRespectsDendro = F,
-                                                respectSmallClusters = F,
-                                                minClusterSize = min.cluster.size)
-    n.mods = length(table(dynamicMods))
-    deep.split = deep.split + 1
-  }
-
-  if(n.mods <= 3){
-    print(table(dynamicMods))
-    stop(paste0("There are only ",n.mods," modules in the network. Makes no sense to continue"))
-  }
-  dynamicColors = WGCNA::labels2colors(dynamicMods)
-  if(!silent)
-    print(table(dynamicColors))
-  dynamicColors = CoExpNets::dropGreyModule(dynamicColors)
-  if(!silent)
-    print(tissue.name)
-  if(!silent)
-    print(table(dynamicColors))
-
-  # Calculate eigengenes
-  MEList = WGCNA::moduleEigengenes(expr.data,
-                                   colors = dynamicColors,
-                                   excludeGrey=excludeGrey)
-  MEs = MEList$eigengenes
-  # Calculate dissimilarity of module eigengenes
-  MEDiss = 1-cor(MEs,use = "pairwise.complete.obs")
-  # Cluster module eigengenes
-  METree = flashClust::flashClust(as.dist(MEDiss), method = "average")
-
-
-
-  #Prepare for creating the network objecto to return
-  # Rename to moduleColors
-  moduleColors = dynamicColors
-  # Construct numerical labels corresponding to the colors
-  colorOrder = c("grey", WGCNA::standardColors(400) )
-  moduleLabels = match(moduleColors, colorOrder)-1
-  tb2 <- table(moduleColors)[order(table(moduleColors))]
-  if(!silent)
-    print(tb2)
-
-  if(save.plots){
-    pdf(file=paste0(additional.prefix,"_mod_size.pdf"))
-    barplot.title <- paste0("Mod. sizes for ",length(unique(moduleColors)),
-                            " modules and ",title)
-    barplot(tb2,col=names(tb2),
-            main=barplot.title,
-            xlab="Mod colors",ylab="Mod size")
-    dev.off()
-  }
-
-  net$MEs <- MEs
-  rownames(net$MEs) <- sample.names
-  net$moduleLabels <- moduleLabels
-  net$moduleColors <- moduleColors
-  net$adjacency = NA
-  net$beta = NA
-  net$type = net.type
-  names(net$moduleColors) <- gene.names
-  net$geneTree <- geneTree
-  return(net)
-}
 
 corDistance = function(a,b,signed=TRUE,cor.type="pearson"){
   if(cor.type=="pearson"){
@@ -3421,10 +2926,12 @@ getModuleTOMGraph = function(tissue,
                              which.one,
                              module,
                              topgenes,...){
+
   tom = getModuleTOM(tissue=tissue,
                      which.one=which.one,
                      module=module,
                      ...)
+
   if(is.null(tom) | typeof(tom) == "character") return(tom)
 
   topgenes = min(topgenes,ncol(tom))
@@ -3505,4 +3012,43 @@ getModuleTOMs = function(tissue,beta,out.path,
     mask = net$moduleColors == x
     saveRDS(tom[mask,mask],paste0(out.path,"/",netf,".",x,".tom.rds"))
   })
+}
+
+pair = function(indexes=1:100,paired=NULL){
+  if(is.null(paired)){
+    indexes = sample(indexes)
+    iout = do.call(rbind,lapply(seq(1,length(indexes) - 1,2),
+                                function(x){
+                                  c(indexes[x],indexes[x + 1])
+                                }))
+  }else{
+    stopifnot(length(indexes) == length(paired))
+    #Deal with the umpaired first
+    iout = NULL
+    mytab = table(paired)
+    if(sum(mytab == 1) >= 2){
+      positions = as.character(paired) %in% names(mytab)[mytab == 1]
+      lindexes = indexes[positions]
+      mask = sample(1:length(lindexes))
+      lindexes = lindexes[mask]
+      ids = which(positions)
+      ids = ids[mask]
+      #print(lindexes)
+      iout = do.call(rbind,lapply(seq(1,length(lindexes) - 1,2),
+                                  function(x){
+                                    c(lindexes[x],lindexes[x + 1],paste0(ids[x],",",ids[x+1]))
+                                  }))
+    }
+    #Deal with paired now
+    keys = names(mytab)[mytab > 1]
+    for(key in keys){
+      positions = as.character(paired) == key
+      #print(key)
+      #print(positions)
+      pairs = pair(indexes[positions])
+      iout = rbind(iout,cbind(pairs,rep(key,nrow(pairs))))
+    }
+  }
+
+  iout
 }

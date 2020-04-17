@@ -160,7 +160,8 @@ fromEntrez2Ensembl <- function(genes,
 #' @export
 #'
 #' @examples
-fromGeneName2Ensembl <- function(genes,ignore.unknown=FALSE,which.are.unknown=FALSE){
+fromGeneName2Ensembl <- function(genes,ignore.unknown=FALSE,
+                                 which.are.unknown=FALSE,silent=T){
   if(!exists("coexp.utils.gene.names.conv.table"))
     loadConvTable()
 
@@ -174,9 +175,12 @@ fromGeneName2Ensembl <- function(genes,ignore.unknown=FALSE,which.are.unknown=FA
   }else{
     unnamed.genes.count <- sum(is.na(gene.names))
     if(unnamed.genes.count > 0){
-      print(paste0("Genes without name ",unnamed.genes.count))
-      print(paste0("Genes ",paste0(genes[is.na(gene.names)][1:unnamed.genes.count],collapse=", "),
-                   " don't have a name"))
+      if(!silent){
+        print(paste0("Genes without name ",unnamed.genes.count))
+        print(paste0("Genes ",paste0(genes[is.na(gene.names)][1:unnamed.genes.count],collapse=", "),
+                     " don't have a name"))
+      }
+
       gene.names[is.na(gene.names)] <- genes[is.na(gene.names)]
     }
   }
@@ -232,7 +236,9 @@ loadConvTable = function(){
   coexp.utils.gene.names.conv.table <<- the.table
 }
 
-fromEnsembl2GeneName <- function(genes,ignore.unknown=FALSE,which.are.unknown=FALSE){
+fromEnsembl2GeneName <- function(genes,ignore.unknown=FALSE,
+                                 which.are.unknown=FALSE,
+                                 silent=T){
 
     loadConvTable()
 
@@ -246,10 +252,40 @@ fromEnsembl2GeneName <- function(genes,ignore.unknown=FALSE,which.are.unknown=FA
   }else{
     unnamed.genes.count <- sum(is.na(gene.names))
     if(unnamed.genes.count > 0){
-      cat("Genes without name ",unnamed.genes.count,"\n")
+      if(!silent)
+        cat("Genes without name ",unnamed.genes.count,"\n")
       if(unnamed.genes.count > 3)
         unnamed.genes.count = 10
-      cat("Genes ",paste0(genes[is.na(gene.names)][1:unnamed.genes.count],collapse=", "), " and more... don't have a name\n")
+      if(!silent)
+        cat("Genes ",paste0(genes[is.na(gene.names)][1:unnamed.genes.count],collapse=", "), " and more... don't have a name\n")
+      gene.names[is.na(gene.names)] <- genes[is.na(gene.names)]
+    }
+  }
+  return(gene.names)
+}
+
+fromEnsembl2GeneNameWithGProf <- function(genes,ignore.unknown=FALSE,
+                                 which.are.unknown=FALSE,
+                                 silent=T){
+
+  library(gprofiler2)
+  gene.names = gprofiler2::gconvert(genes)
+  gene.names = gene.names$name[match(genes,gene.names$input)]
+
+  if(which.are.unknown)
+    return(is.na(gene.names))
+
+  if(ignore.unknown){
+    gene.names <- na.omit(gene.names)
+  }else{
+    unnamed.genes.count <- sum(is.na(gene.names))
+    if(unnamed.genes.count > 0){
+      if(!silent)
+        cat("Genes without name ",unnamed.genes.count,"\n")
+      if(unnamed.genes.count > 3)
+        unnamed.genes.count = 10
+      if(!silent)
+        cat("Genes ",paste0(genes[is.na(gene.names)][1:unnamed.genes.count],collapse=", "), " and more... don't have a name\n")
       gene.names[is.na(gene.names)] <- genes[is.na(gene.names)]
     }
   }

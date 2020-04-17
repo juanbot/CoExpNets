@@ -23,6 +23,9 @@ be named with the sample IDs.}
 
 \item{n.mds}{Number of genes to use, randomly sampled}
 }
+\value{
+
+}
 \description{
 plotMDS - Testing gene sepparability with multi-dimensional
 scalling.

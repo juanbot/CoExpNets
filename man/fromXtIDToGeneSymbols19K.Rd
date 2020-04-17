@@ -9,6 +9,9 @@ fromXtIDToGeneSymbols19K(xids)
 \arguments{
 \item{xids}{}
 }
+\value{
+
+}
 \description{
 Title
 }

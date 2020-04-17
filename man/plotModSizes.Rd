@@ -9,6 +9,9 @@ plotModSizes(which.one, tissue)
 \arguments{
 \item{tissue}{}
 }
+\value{
+
+}
 \description{
 Title
 }

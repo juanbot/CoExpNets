@@ -6,6 +6,9 @@
 \usage{
 getNetworkCategories()
 }
+\value{
+
+}
 \description{
 Title
 }

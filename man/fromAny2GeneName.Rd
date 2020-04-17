@@ -9,6 +9,9 @@ fromAny2GeneName(genes)
 \arguments{
 \item{genes}{}
 }
+\value{
+
+}
 \description{
 Title
 }

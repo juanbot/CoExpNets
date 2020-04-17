@@ -6,11 +6,22 @@
 If you are not interested in the k-means or before getting into that you want to
 have a look at the basic WGCNA network use this method}
 \usage{
-getAndPlotNetworkLong(expr.data, beta, net.type = "signed",
-  tissue.name = "MyTissue", title = NULL, additional.prefix = NULL,
-  min.cluster.size = 100, save.plots = TRUE, return.tom = FALSE,
-  excludeGrey = FALSE, max.k.cutoff = 150, r.sq.cutoff = 0.8,
-  cor.type = "pearson", silent = T)
+getAndPlotNetworkLong(
+  expr.data,
+  beta,
+  net.type = "signed",
+  tissue.name = "MyTissue",
+  title = NULL,
+  additional.prefix = NULL,
+  min.cluster.size = 100,
+  save.plots = TRUE,
+  return.tom = FALSE,
+  excludeGrey = FALSE,
+  max.k.cutoff = 150,
+  r.sq.cutoff = 0.8,
+  cor.type = "pearson",
+  silent = T
+)
 }
 \arguments{
 \item{expr.data}{Aan object or a file, genes at columns, samples at rows.
