@@ -9,6 +9,7 @@ getNetworkFromTissue(
   which.one = "exonic",
   only.file = F,
   genes = NULL,
+  silent = T,
   modules
 )
 }

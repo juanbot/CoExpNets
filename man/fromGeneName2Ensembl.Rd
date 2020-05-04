@@ -4,7 +4,12 @@
 \alias{fromGeneName2Ensembl}
 \title{Title}
 \usage{
-fromGeneName2Ensembl(genes, ignore.unknown = FALSE, which.are.unknown = FALSE)
+fromGeneName2Ensembl(
+  genes,
+  ignore.unknown = FALSE,
+  which.are.unknown = FALSE,
+  silent = T
+)
 }
 \arguments{
 \item{which.are.unknown}{}

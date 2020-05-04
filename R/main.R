@@ -951,9 +951,12 @@ getDownstreamNetwork = function(tissue="mytissue",
   if(is.null(net.and.tom))
     return(net.and.tom)
 
-  if(is.null(final.net))
+  if(is.null(final.net) & !is.null(job.path))
     final.net = paste0(job.path,"/","net",tissue,".",
                        net.and.tom$net$beta,".it.",n.iterations,".rds")
+  if(is.null(job.path))
+    final.net = NULL
+
   outnet = applyKMeans(tissue=tissue,
                        n.iterations=n.iterations,
                        net.file=net.and.tom$net,
@@ -963,7 +966,7 @@ getDownstreamNetwork = function(tissue="mytissue",
                        silent=silent)
 
 
-  if(save.tom){
+  if(save.tom & !is.null(final.net)){
     if(blockTOM)
       saveTOM(tom=net.and.tom$tom,
               clusters=outnet$moduleColors,
@@ -977,31 +980,36 @@ getDownstreamNetwork = function(tissue="mytissue",
   outnet$adjacency = net.and.tom$net$adjacency
   names(outnet$moduleColors) = colnames(expr.data)
   outnet$discGenes = discGenes
-  saveRDS(outnet,final.net)
-  if(save.tom){
-    if(blockTOM)
-      outnet$tom = paste0(final.net,".tom.")
-    else
-      outnet$tom = paste0(final.net,".tom.rds")
-  }
-  if(save.plots){
-    cat("Generating mod sizes for",final.net,"\n")
-    pdf(paste0(final.net,".mod_size.pdf"))
-    plotModSizes(which.one="new",tissue=final.net)
-    dev.off()
-    pdf(paste0(final.net,".Eigengenes_clustering.pdf"))
-    plotEGClustering(which.one="new",tissue=final.net)
-    dev.off()
-  }
-  if(fullAnnotation){
-    go = CoExpNets::getGProfilerOnNet(net.file=final.net,
-                                      out.file=paste0(final.net,"_gprof.csv"))
+  if(!is.null(final.net)){
+    saveRDS(outnet,final.net)
+    if(save.tom){
+      if(blockTOM)
+        outnet$tom = paste0(final.net,".tom.")
+      else
+        outnet$tom = paste0(final.net,".tom.rds")
+    }
+    if(save.plots){
+      cat("Generating mod sizes for",final.net,"\n")
+      pdf(paste0(final.net,".mod_size.pdf"))
+      plotModSizes(which.one="new",tissue=final.net)
+      dev.off()
+      pdf(paste0(final.net,".Eigengenes_clustering.pdf"))
+      plotEGClustering(which.one="new",tissue=final.net)
+      dev.off()
+    }
+    if(fullAnnotation){
+      go = CoExpNets::getGProfilerOnNet(net.file=final.net,
+                                        out.file=paste0(final.net,"_gprof.csv"))
 
-    write.csv(CoExpNets::genAnnotationCellType(net.in=final.net,
-                                               return.processed = F),
-              paste0(final.net,"_celltype.csv"))
+      write.csv(CoExpNets::genAnnotationCellType(net.in=final.net,
+                                                 return.processed = F),
+                paste0(final.net,"_celltype.csv"))
+    }
+    return(final.net)
   }
-  return(final.net)
+  outnet
+
+
 }
 
 
