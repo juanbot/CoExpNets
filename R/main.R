@@ -2996,6 +2996,64 @@ getModuleTOM = function(tissue,
   return(readRDS(tfile))
 }
 
+
+#' Title Module correspondence between two networks
+#'
+#' This method is useful to compare two networks created from the same gene pool but
+#' with different method or different expression data source. Note that genes must be
+#' in the same order within the two networks `moduleColors` variable
+#' @param colors1 The `net$moduleColors` element of the 1st network
+#' @param colors2 The `net$moduleColors` element of the 2nd network
+#' @param tissue1 Tissue label as used in the plot for the 1st network
+#' @param tissue2 Tissue label as used in the plot for the 2nd network
+#' @param plot.file Convenient for generating a pdf when the number of modules is high
+#' so everything fits in the plot nicely.
+#'
+#' @return P-value matrix of the overlap between net 1 modules (rows) and net 2 modules (columns)
+#' @export
+#'
+#' @examples
+genCrossTabPlot <- function(colors1,
+                            colors2,
+                            tissue1="Net 1",
+                            tissue2="Net 2",
+                            plot.file=NULL){
+
+  #We create a simple crosstab
+  XTbl <- overlapTable(colors1, colors2)
+  XTbl$pTable[] = p.adjust(XTbl$pTable,method="fdr")
+  toreturn = XTbl$pTable
+  #print(XTbl)
+  # Truncate p values smaller than 10^(-50) to 10^(-50)
+  XTbl$pTable <- -log10(XTbl$pTable)
+  #XTbl$pTable[is.infinite(XTbl$pTable)] = 1.3*max(XTbl$pTable[is.finite(XTbl$pTable)])
+  XTbl$pTable[XTbl$pTable>50 ] = 50
+
+  # Marginal counts (really module sizes)
+  ModTotals.1 = apply(XTbl$countTable, 1, sum)
+  ModTotals.2 = apply(XTbl$countTable, 2, sum)
+  if(!is.null(plot.file)){
+    pdf(plot.file,height=14,width=18)
+    print(paste0("Saving new plot ",plot.file))
+
+  }
+  par(mar=c(15, 12, 2.7, 1)+0.4)
+
+  # Use function labeledHeatmap to produce the color-coded table
+  #with all the trimmings
+  labeledHeatmap(Matrix = XTbl$pTable,
+                 yLabels = paste(" ", names(ModTotals.1)),xLabels = paste(" ",
+                                                                          names(ModTotals.2)),colorLabels = TRUE,
+                 textMatrix =XTbl$countTable,colors = greenWhiteRed(100)[50:100],
+                 ySymbols = paste(names(ModTotals.1)," : ", ModTotals.1, sep=""),
+                 xSymbols = paste(names(ModTotals.2)," : ", ModTotals.2, sep=""),
+                 main = paste0("Correspondence of ", tissue1," (rows) and ", tissue2, " (columns) modules",sep=""),
+                 cex.text = 0.8, cex.lab = 1.0, setStdMargins = FALSE, plotLegend= TRUE)
+  if(!is.null(plot.file))
+    dev.off()
+  return(toreturn)
+}
+
 getModuleTOMs = function(tissue,beta,out.path,
                          which.one="CoExpROSMAP",
                          package=which.one,
