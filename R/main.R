@@ -256,8 +256,23 @@ plot.bootnet = function(net){
   for(i in 2:nrow(clusters)){
     rdiffs = c(rdiffs,mclust::adjustedRandIndex(clusters[i,],clusters[i-1,]))
     fdiffs = c(fdiffs,mclust::adjustedRandIndex(clusters[i-1,],net$moduleColors))
-    if(!is.null(net$allsamplesnet))
-      adiffs = c(adiffs,mclust::adjustedRandIndex(clusters[i,],net$allsamplesnet$moduleColors))
+    if(!is.null(net$allsamplesnet)){
+      cat("It seems to be an all samples net\n")
+      if(typeof(net$allsamplesnet) == "character"){
+        cat("Getting the network from file",net$allsamplesnet,"\n")
+        if(file.exists(net$allsamplesnet))
+          net$allsamplesnet = readRDS(net$allsamplesnet)
+        else{
+          cat("There is no file",net$allsamplesnet,", we´ll skip this part\n")
+          net$allsamplesnet = NULL
+
+        }
+
+      }
+      if(!is.null(net$allsamplesnet))
+        adiffs = c(adiffs,mclust::adjustedRandIndex(clusters[i,],net$allsamplesnet$moduleColors))
+    }
+
 
   }
   print(rdiffs)
@@ -267,13 +282,14 @@ plot.bootnet = function(net){
   if(!is.null(adiffs))
     lines(adiffs,col="blue")
   lines(fdiffs,col="red")
-  legend("topleft",
+  legend("topleft",cex=0.7,
          legend = c("Succesive Rand simmilarity",
                     "Simmilarity with final net",
                     "Simmilarity with cannonical net"),
          fill=c("black","red","blue"))
-
 }
+
+
 #' plotMDS - Testing gene sepparability with multi-dimensional
 #' scalling.
 #'
@@ -848,7 +864,7 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
   if(allsampsnet)
     finalnet$allsamplesnet = getDownstreamNetwork(expr.data=expr.data,
                                                   tissue=paste0(tissue,"_allsamps_"),
-                                                  job.path=job.path,
+                                                  job.path=NULL,
                                                   save.plots=F,
                                                   min.cluster.size = min.cluster.size,
                                                   n.iterations=n.iterations,
