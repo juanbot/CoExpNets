@@ -79,8 +79,7 @@ preservationOneWay <- function(network,
                              maxModuleSize=maxModuleSize)
   })
 
-  getPreservationStatisticsOneWay(network=network,
-                                  tissues=tissues,
+  getPreservationStatisticsOneWay(tissues=tissues,
                                   presRes=mp)
 
 }
