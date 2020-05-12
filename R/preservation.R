@@ -86,8 +86,7 @@ preservationOneWay <- function(network,
 }
 
 
-getPreservationStatisticsOneWay <- function(tissues,
-                                            presRes){
+getPreservationStatisticsOneWay <- function(tissues,presRes){
 
   Zsummary <- NULL
   MedianRank <- NULL
