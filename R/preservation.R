@@ -1,3 +1,20 @@
+#' Title Check whether one network module is preseved in a tissue gene expression profile
+#'
+#' @param network The network you want to assess about preservation (can be a full
+#' path and file name. Can be a network object as well.
+#' @param expr.data.files A list with the expression data used to create the network (1st element) and the
+#' expression data onto which we want the network assessed of preservation (2nd element)
+#' @param tissues A vector of strings, to name the tissues
+#' @param permutations The number of random permutations used to construct the null hypothesis. 200 may be a
+#' reasonable number
+#' @param maxModuleSize All modules over this size in genes will be considered as having as much size as this limit
+#' @param maxGoldModuleSize The size of the random module to be used as a reference of a totally random module values
+#' @param randomSeed Seed for the random number generator
+#'
+#' @return A data frame with modules in the rows and statistics at the columns.
+#' @export
+#'
+#' @examples
 preservationOneWay <- function(network,
                                expr.data.files=NULL,
                                tissues=c("snig","putm"),
