@@ -798,7 +798,7 @@ annotate = function(net,subnets=T,organism="hsapiens",ensembl=F){
     net = readRDS(net)
   if(is.null(names(net$moduleColors)))
     names(net$moduleColors) = names(net$adjacency)
-  cat("Annotating network",basename(net$file),"\n")
+  cat("Annotating network\n")
   net$go = getGProfilerOnNet(net.file=net,out.file=NULL,ensembl=ensembl)
   notHuman = ifelse(organism == "hsapiens",F,T)
   net$ct = genAnnotationCellType(net.in=net,return.processed=F,which.one="new",notHuman=notHuman)
