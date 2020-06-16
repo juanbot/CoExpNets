@@ -1976,7 +1976,7 @@ corWithNumTraits = function(tissue,which.one,covlist,covs=NULL){
   textMatrix = paste(signif(moduleTraitCor, 2), "\n(",
                      signif(moduleTraitPvalue, 1), ")", sep = "")
   if(length(covlist) == 1){
-    textMatrix = cbind(rep("--",length(textMatrix)))
+    textMatrix = cbind(rep("--",length(textMatrix)),textMatrix)
     moduleTraitCor = cbind(rep(0,nrow(moduleTraitCor)),moduleTraitCor)
     covlist = c("Dummy",covlist)
   }else
