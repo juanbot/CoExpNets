@@ -1975,7 +1975,12 @@ corWithNumTraits = function(tissue,which.one,covlist,covs=NULL){
   moduleTraitPvalue = WGCNA::corPvalueStudent(moduleTraitCor, nrow(MEs))
   textMatrix = paste(signif(moduleTraitCor, 2), "\n(",
                      signif(moduleTraitPvalue, 1), ")", sep = "")
-  dim(textMatrix) = dim(moduleTraitCor)
+  if(length(covlist) == 1){
+    textMatrix = cbind(rep("--",length(textMatrix)))
+    moduleTraitCor = cbind(rep(0,nrow(moduleTraitCor)),moduleTraitCor)
+    covlist = c("Dummy",covlist)
+  }else
+    dim(textMatrix) = dim(moduleTraitCor)
   par(mar = c(6, 8.5, 3, 3));
   # Display the correlation values within a heatmap plot
   WGCNA::labeledHeatmap(Matrix = moduleTraitCor,
