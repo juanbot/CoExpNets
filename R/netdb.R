@@ -386,7 +386,7 @@ getModuleMostRelevantGenes = function(tissue="SNIG",
                                       cutoff=-1,
                                       expr.data.file=NULL){
 
-  mm = getMM(which.one=which.one,tissue=tissue,table.format = T,
+  mm = getMM(which.one=which.one,tissue=tissue,
              genes=NULL,
              expr.data.file=expr.data.file)
 

@@ -1775,7 +1775,7 @@ corDistance = function(a,b,signed=TRUE,cor.type="pearson"){
 #' @param keep.grey Use grey genes too
 #' @param alt.gene.index You can pass genes in a different order, use this index order for that
 #'
-#' @returnk Depending on the value of table.format, a data.frame with genes and MM values or a list
+#' @return A data.frame with genes and MM values or a list
 #' with genes as keys and the MMs as values
 #' @export
 #'
@@ -2707,7 +2707,7 @@ bottomUpNetwork = function(tissue="SNIG",
     adjacencies <<- apply(tom.matrix,2,sum)
     names(adjacencies) <<- colnames(tom.matrix)
     mms <<- getMM(net=net,genes=NULL,expr.data.file=expr.data,tissue=tissue,
-                  which.one=which.one,in.cluster=F)
+                  which.one=which.one)
   }else{
     adjacencies = apply(tom.matrix,2,sum)
     names(adjacencies) = colnames(tom.matrix)

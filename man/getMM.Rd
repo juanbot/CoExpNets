@@ -39,6 +39,10 @@ which.one set to "new" for a network which is not in the DDBB.}
 
 \item{alt.gene.index}{You can pass genes in a different order, use this index order for that}
 }
+\value{
+A data.frame with genes and MM values or a list
+with genes as keys and the MMs as values
+}
 \description{
 Title Obtain the Module Membership of genes
 This function works by getting the Pearson correlation between the
