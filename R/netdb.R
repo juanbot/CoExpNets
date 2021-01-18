@@ -133,6 +133,10 @@ loadDDBB = function(filein,outtmp="/tmp/tempddbb.txt"){
 }
 
 detectAndInstallNetworks = function(path,category=NULL){
+  cnamesingprofv2 = c("query","p_value","term_id","term_name","source")
+  cnamesingprofv1 = c("query.number","p.value","term.id",
+                      "term.name","domain")
+
   files = list.files(path,full.names = T,recursive = T)
   print(files[grep("/net.+rds$",files)])
   detected = NULL
@@ -147,6 +151,15 @@ detectAndInstallNetworks = function(path,category=NULL){
       else
         localcategory = category
       cat("Installing network",netName,"in category",localcategory,"\n")
+
+      #Checking col names for gProfileR
+      goterms = read.csv(gofile,stringsAsFactors = F)
+      if(sum(colnames(goterms) %in% cnamesingprofv1) == 0){
+        file.rename(gofile,paste0(gofile,".old"))
+        colnames(goterms)[match(cnamesingprofv2,colnames(goterms))] = cnamesingprofv1
+        write.csv(goterms,gofile,row.names = F)
+      }
+
       addNet(which.one=localcategory,
              tissue=netName,
              netfile=file,
