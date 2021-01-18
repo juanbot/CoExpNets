@@ -133,7 +133,7 @@ loadDDBB = function(filein,outtmp="/tmp/tempddbb.txt"){
 }
 
 detectAndInstallNetworks = function(path,category=NULL){
-  files = list.files("~/tmp/",full.names = T,recursive = T)
+  files = list.files(path,full.names = T,recursive = T)
   print(files[grep("/net.+rds$",files)])
   detected = NULL
   for(file in files){
