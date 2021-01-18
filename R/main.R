@@ -1791,35 +1791,60 @@ getMM = function(net=NULL,
                  alt.gene.index=NULL,
                  dupAware=T){
 
-  if(is.null(net))
+  mm.file.name = NULL
+  mm.data = NULL
+
+  if(is.null(net)){
     net = getNetworkFromTissue(tissue,which.one)
-  else{
-    if(typeof(net) == "character")
-      net = readRDS(net)
-  }
-  if(is.null(expr.data.file))
-    expr.data = getExprDataFromTissue(tissue=tissue,which.one=which.one,only.file = F)
-  else{
-    if(typeof(expr.data.file) == "character")
-      expr.data = readRDS(expr.data.file)
-    else
-      expr.data = expr.data.file
+    netf = getNetworkFromTissue(tissue,which.one,only.file = T)
+    mm.file.name = paste0(netf,"_getMM.csv")
   }
 
-  if(!identicalNames){
+  else{
+    if(typeof(net) == "character"){
+      mm.file.name = paste0(net,"_getMM.csv")
+      net = readRDS(net)
+    }
+  }
+
+  if(!is.null(mm.file.name) & file.exists(mm.file.name)){
+    mm.data = read.table(mm.file.name,stringsAsFactors = F,sep="\t",
+                         header = T)
+
+  }
+
+  if(is.null(mm.data) & is.null(expr.data.file))
+    expr.data = getExprDataFromTissue(tissue=tissue,which.one=which.one,only.file = F)
+
+  if(is.null(mm.data) & typeof(expr.data.file) == "character"){
+    expr.data = readRDS(expr.data.file)
+  }
+
+  if(!is.null(mm.data))
+      expr.data = expr.data.file
+
+  if(is.null(mm.data) & !identicalNames){
     colnames(expr.data) = fromAny2Ensembl(colnames(expr.data))
     names(net$moduleColors) = fromAny2Ensembl(names(net$moduleColors))
     if(is.null(genes))
       genes = names(net$moduleColors)
     ens.genes = fromAny2Ensembl(genes)
-  }else{
+  }
+
+  if(is.null(mm.data) & identicalNames){
     if(is.null(genes))
       genes = names(net$moduleColors)
-    ens.genes = genes
+    ens.genes = fromAny2Ensembl(genes)
+  }
+
+  if(!is.null(mm.data)){
+    if(is.null(genes))
+      genes = names(net$moduleColors)
+    ens.genes = fromAny2Ensembl(genes)
   }
 
 
-  if(is.null(expr.data)){
+  if(is.null(expr.data) & is.null(mm.data)){
     cat("There is no expr.data file registered for category", which.one,"and tissue",tissue,"\n")
     return(expr.data)
   }
@@ -1867,29 +1892,50 @@ getMM = function(net=NULL,
   out.table[1:length(genes),2] = fromAny2GeneName(genes)
   out.table[1:length(genes),3] = modules
 
+  ##Here is where we get the MMs, either from expression data or precalculated
 
+  if(is.null(mm.data)){
+    for(i in 1:length(genes)){
+      gene = genes[i]
+      module = modules[i]
+      expr.data.gene.index = gene
 
-  for(i in 1:length(genes)){
-    gene = genes[i]
-    module = modules[i]
-    expr.data.gene.index = gene
+      if(length(module) == 0){
+        if(!silent)
+          cat("Gene ",gene," not in network\n")
+        out.table[i,4] = -1
+      }else{
+        if(module == "grey" & !keep.grey)
+          out.table[i,4] = 0
+        else{
 
-    if(length(module) == 0){
-      if(!silent)
-        cat("Gene ",gene," not in network\n")
-      out.table[i,4] = -1
-    }else{
-      if(module == "grey" & !keep.grey)
-        out.table[i,4] = 0
-      else{
+          tryCatch(out.table[i,4] <- cor(net$MEs[paste0("ME",module)],expr.data[,expr.data.gene.index]),
+                   error = function(e){
+                     print(paste0("Error in module ",module," ",e))
+                   })
+        }
+      }
+    }
+  }else{
+    for(i in 1:length(genes)){
+      gene = genes[i]
+      module = modules[i]
+      mm.data.gene.index = gene
 
-        tryCatch(out.table[i,4] <- cor(net$MEs[paste0("ME",module)],expr.data[,expr.data.gene.index]),
-                 error = function(e){
-                   print(paste0("Error in module ",module," ",e))
-                 })
+      if(length(module) == 0 | is.na(module)){
+        if(!silent)
+          cat("Gene ",gene," not in network\n")
+        out.table[i,4] = -1
+        out.table[i,3] = "notamodule"
+      }else{
+        if(module == "grey" & !keep.grey)
+          out.table[i,4] = 0
+        else
+          out.table[i,4] = mm.data$mm[mm.data$name == gene]
       }
     }
   }
+
   return(out.table)
 }
 
@@ -2688,8 +2734,8 @@ bottomUpNetwork = function(tissue="SNIG",
     cat("We'll use",threshold,"genes within the plot \n")
   }
 
-  biotypes = fromEnsembl2Function(fromAny2Ensembl(names(net$moduleColors)))
-  names(biotypes) = names(net$moduleColors)
+  #biotypes = fromEnsembl2Function(fromAny2Ensembl(names(net$moduleColors)))
+  #names(biotypes) = names(net$moduleColors)
   edge.cols <- c("fromNode", "toNode", "weight", "direction", "fromAltName", "toAltName")
   node.cols <- c("nodeName", "altName", "biotype","module","adjacency","mm","type")
 
@@ -2701,7 +2747,7 @@ bottomUpNetwork = function(tissue="SNIG",
     folder = paste0(folder,"partial.")
 
   if(!loaded){
-    tom.matrix <<- getTOMFromTissue(tissue,which.one,"signed")
+    tom.matrix <<- getTOMFromTissue(tissue,which.one,T)
     colnames(tom.matrix) <<- names(net$moduleColors)
     rownames(tom.matrix) <<- colnames(tom.matrix)
     adjacencies <<- apply(tom.matrix,2,sum)

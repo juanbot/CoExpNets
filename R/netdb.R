@@ -132,6 +132,32 @@ loadDDBB = function(filein,outtmp="/tmp/tempddbb.txt"){
   cat("Loading",nrow(coexp.nets),"from",filein,"\n")
 }
 
+detectAndInstallNetworks = function(path,category=NULL){
+  files = list.files("~/tmp/",full.names = T,recursive = T)
+  print(files[grep("/net.+rds$",files)])
+  detected = NULL
+  for(file in files){
+    gofile = paste0(file,"_gprof.csv")
+    ctfile = paste0(file,"_celltype.csv")
+    mmfile = paste0(file,"_getMM.csv")
+    if(file.exists(gofile) & file.exists(ctfile) & file.exists(mmfile)){
+      netName = gsub(".rds$","",gsub("^net","",basename(file)))
+      if(is.null(category))
+        localcategory = gsub("/.+/","",dirname(file))
+      else
+        localcategory = category
+      cat("Installing network",netName,"in category",localcategory,"\n")
+      addNet(which.one=localcategory,
+             tissue=netName,
+             netfile=file,
+             ctfile=ctfile,
+             gofile=gofile,
+             exprdatafile="Nonspecified",
+             overwrite=T)
+    }
+  }
+}
+
 #' Title
 #'
 #' @return
@@ -319,6 +345,8 @@ getNetworkFromTissue = function(tissue="SNIG",
       return(tissue)
     if(!silent)
       cat("New network, reading from",tissue,"\n")
+    if(only.file)
+      return(tissue)
     return(readRDS(tissue))
 
   }
@@ -360,7 +388,7 @@ getModulesMostRelevantGenes = function(tissues="SNIG",
     expr.data.file = getExprDataFromTissue(tissue=tissue,
                                            which.one=which.ones[i],only.file=T)
     mm = getMM(which.one=which.ones[i],tissue=tissue,
-               table.format = T,genes=NULL,
+               genes=NULL,
                expr.data.file=expr.data.file)
 
     mm = mm[mm$module == modules[i],]
@@ -397,13 +425,16 @@ getModuleMostRelevantGenes = function(tissue="SNIG",
   return(mm[mm$mm > cutoff,])
 }
 
-getExprDataFromTissue = function(tissue="SNIG",which.one="rnaseq",only.file=F){
+ getExprDataFromTissue = function(tissue="SNIG",which.one="rnaseq",only.file=F){
 
   if(which.one == "new"){
     cat("Reading new expression data from",tissue,"\n")
     if(only.file)
       return(tissue)
-    return(readRDS(tissue))
+    expr.data = readRDS(tissue)
+    if(class(expr.data) != "data.frame" & class(expr.data) != "matrix")
+      warning("The file ",tissue," does not seem like an expression profiling object")
+    return(expr.data)
   }
   file = findData(which.one,tissue)
   if(only.file)
