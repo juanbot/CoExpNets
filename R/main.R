@@ -1798,46 +1798,50 @@ getMM = function(net=NULL,
     net = getNetworkFromTissue(tissue,which.one)
     netf = getNetworkFromTissue(tissue,which.one,only.file = T)
     mm.file.name = paste0(netf,"_getMM.csv")
-  }
-
-  else{
+  }else{
     if(typeof(net) == "character"){
       mm.file.name = paste0(net,"_getMM.csv")
       net = readRDS(net)
+    }else{
+      if(!is.null(net[["file"]]))
+        mm.file.name = paste0(net[["file"]],"_getMM.csv")
     }
   }
 
-  if(!is.null(mm.file.name) & file.exists(mm.file.name)){
+  if(!is.null(mm.file.name) && file.exists(mm.file.name)){
     mm.data = read.table(mm.file.name,stringsAsFactors = F,sep="\t",
                          header = T)
 
   }
 
-  if(is.null(mm.data) & is.null(expr.data.file))
-    expr.data = getExprDataFromTissue(tissue=tissue,which.one=which.one,only.file = F)
+  if(is.null(mm.data)){
+    if(is.null(expr.data.file))
+      expr.data = getExprDataFromTissue(tissue=tissue,which.one=which.one,only.file = F)
+    else if(class(expr.data.file) == "data.frame" || class(expr.data.file) == "matrix")
+      expr.data = expr.data.file
+    else if(typeof(expr.data.file) == "character")
+      expr.data = readRDS(expr.data.file)
+    else
+      stop("Don´t know how to get MM information, no MM file, no expression data type")
 
-  if(is.null(mm.data) & typeof(expr.data.file) == "character"){
-    expr.data = readRDS(expr.data.file)
+    if(!identical(names(net$moduleColors),colnames(expr.data))){
+      colnames(expr.data) = fromAny2Ensembl(colnames(expr.data))
+      names(net$moduleColors) = fromAny2Ensembl(names(net$moduleColors))
+    }
+
   }
 
   if(!is.null(mm.data))
       expr.data = expr.data.file
 
-  if(is.null(mm.data) & !identicalNames){
-    colnames(expr.data) = fromAny2Ensembl(colnames(expr.data))
-    names(net$moduleColors) = fromAny2Ensembl(names(net$moduleColors))
-    if(is.null(genes))
-      genes = names(net$moduleColors)
-    ens.genes = fromAny2Ensembl(genes)
-  }
+  if(is.null(genes))
+    genes = names(net$moduleColors)
+  ens.genes = fromAny2Ensembl(genes)
 
-  if(is.null(mm.data) & identicalNames){
-    if(is.null(genes))
-      genes = names(net$moduleColors)
-    ens.genes = fromAny2Ensembl(genes)
-  }
 
   if(!is.null(mm.data)){
+    names(net$moduleColors) = fromAny2Ensembl(names(net$moduleColors))
+    mm.data$name = fromAny2Ensembl(mm.data$name)
     if(is.null(genes))
       genes = names(net$moduleColors)
     ens.genes = fromAny2Ensembl(genes)

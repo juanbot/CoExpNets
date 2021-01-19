@@ -196,13 +196,19 @@ reportOnGenes = function(tissue,
                          gwases=NULL){
 
   genes = unique(genes)
+
   #Everything will be turned into Ensembl
   net = getNetworkFromTissue(tissue=tissue,which.one=which.one)
+  netf = getNetworkFromTissue(tissue=tissue,which.one=which.one,only.file = T)
   names(net$moduleColors) =  fromAny2Ensembl(names(net$moduleColors))
   expr.dataf = getExprDataFromTissue(tissue=tissue,which.one=which.one,only.file = T)
-  expr.data = readRDS(expr.dataf)
-  print(head(colnames(expr.data)))
-  colnames(expr.data) = fromAny2Ensembl(colnames(expr.data))
+  if(expr.dataf != "Nonspecified"){
+    expr.data = readRDS(expr.dataf)
+    print(head(colnames(expr.data)))
+    colnames(expr.data) = fromAny2Ensembl(colnames(expr.data))
+  }else
+    expr.data = NULL
+
   en.genes = fromAny2Ensembl(genes)
   gene.names = fromAny2GeneName(genes)
   print(en.genes)
@@ -218,7 +224,7 @@ reportOnGenes = function(tissue,
 
   final.report = NULL
   mult.mod.genes = NULL
-  mms = getMM(net=net,
+  mms = getMM(net=netf,
               expr.data.file=expr.data,
               tissue=tissue,
               genes=en.genes)

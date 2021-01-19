@@ -133,9 +133,10 @@ loadDDBB = function(filein,outtmp="/tmp/tempddbb.txt"){
 }
 
 detectAndInstallNetworks = function(path,category=NULL){
-  cnamesingprofv2 = c("query","p_value","term_id","term_name","source")
+  cnamesingprofv2 = c("query","p_value","term_id",
+                      "term_name","source","intersection_size")
   cnamesingprofv1 = c("query.number","p.value","term.id",
-                      "term.name","domain")
+                      "term.name","domain","intersection")
 
   files = list.files(path,full.names = T,recursive = T)
   print(files[grep("/net.+rds$",files)])
@@ -154,9 +155,10 @@ detectAndInstallNetworks = function(path,category=NULL){
 
       #Checking col names for gProfileR
       goterms = read.csv(gofile,stringsAsFactors = F)
-      if(sum(colnames(goterms) %in% cnamesingprofv1) == 0){
+      if(sum(colnames(goterms) %in% cnamesingprofv1) < length(cnamesingprofv1)){
         file.rename(gofile,paste0(gofile,".old"))
-        colnames(goterms)[match(cnamesingprofv2,colnames(goterms))] = cnamesingprofv1
+        changemask = cnamesingprofv2 %in% colnames(goterms)
+        colnames(goterms)[match(cnamesingprofv2[changemask],colnames(goterms))] = cnamesingprofv1[changemask]
         write.csv(goterms,gofile,row.names = F)
       }
 
