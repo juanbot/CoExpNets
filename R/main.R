@@ -1747,8 +1747,8 @@ getAndPlotNetworkLong <- function(expr.data,beta,
 corDistance = function(a,b,signed=TRUE,cor.type="pearson"){
   if(cor.type=="pearson"){
     if(signed)
-      return(0.5 + 0.5*WGCNA::corFast(x=a,y=b)) #(Note they are equivalent)
-      #return(0.5 * (1 + stats::cor(a,b,use="pairwise.complete.obs")))
+      #return(0.5 + 0.5*WGCNA::corFast(x=a,y=b)) #(Note they are equivalent)
+      return(0.5 * (1 + stats::cor(a,b,use="pairwise.complete.obs")))
     return(abs(stats::cor(a,b)))
   }else{
     if(signed)
