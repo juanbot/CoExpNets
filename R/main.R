@@ -909,6 +909,8 @@ getBootstrapNetwork = function(mode=c("leaveoneout","bootstrap"),
 #' a small amount of your genes
 #' @param excludeGrey If WGCNA detects grey genes, set it to TRUE if you want them removed
 #' from the network before applying k-means
+#' @param fullAnnotation Set to TRUE if you want to annotate by cell type and GO, REACTOME and KEGG
+#' @param fastKMeans Set to TRUE for a faster k-means use
 #'
 #' @return A file name that can be used to access your network
 #' @export
@@ -930,7 +932,8 @@ getDownstreamNetwork = function(tissue="mytissue",
                                 save.plots=F,
                                 excludeGrey=FALSE,
                                 fullAnnotation=T,
-                                silent=T){
+                                silent=T,
+                                fastKMeans=F){
 
   final.net=NULL
   distance.type="cor"
@@ -973,13 +976,24 @@ getDownstreamNetwork = function(tissue="mytissue",
   if(is.null(job.path))
     final.net = NULL
 
-  outnet = applyKMeans(tissue=tissue,
-                       n.iterations=n.iterations,
-                       net.file=net.and.tom$net,
-                       expr.data=expr.data,
-                       excludeGrey=excludeGrey,
-                       min.exchanged.genes = min.exchanged.genes,
-                       silent=silent)
+  if(fastKMeans){
+    outnet = applyFastKMeans(tissue=tissue,
+                             n.iterations=n.iterations,
+                             net.file=net.and.tom$net,
+                             expr.data=expr.data,
+                             excludeGrey=excludeGrey,
+                             min.exchanged.genes = min.exchanged.genes,
+                             silent=silent)
+  }else{
+    outnet = applyKMeans(tissue=tissue,
+                             n.iterations=n.iterations,
+                             net.file=net.and.tom$net,
+                             expr.data=expr.data,
+                             excludeGrey=excludeGrey,
+                             min.exchanged.genes = min.exchanged.genes,
+                             silent=silent)
+
+  }
 
 
   if(save.tom & !is.null(final.net)){
@@ -1391,6 +1405,152 @@ applyKMeans <- function(tissue,
   return(net)
 }
 
+applyFastKMeans = function(tissue,
+                        net.file,
+                        expr.data,
+                        n.iterations=20,
+                        debug=F,
+                        n.debug=500,
+                        net.type="signed",
+                        min.exchanged.genes=20,
+                        excludeGrey=F,
+                        silent=T){
+
+  if(typeof(expr.data) == "character")
+    expr.data <- readRDS(expr.data)
+
+  if(debug){
+    cat("We are debugging, using only ",n.debug," genes")
+    expr.data = expr.data[,1:n.debug]
+  }
+
+  #Step 2
+  if(typeof(net.file) == "character"){
+    net <- readRDS(net.file)
+  }else
+    net = net.file
+
+  if(debug){
+    net$moduleColors = net$moduleColors[1:n.debug]
+  }
+
+  ##Step 1.
+
+  #Gather the current partition we start from
+  #partition.in.colors <- net$moduleColors
+  clusters = net$moduleColors
+  geneNames = names(clusters)
+  #Step 3
+  eigengenes = WGCNA::moduleEigengenes(expr.data,net$moduleColors,
+                                       excludeGrey=excludeGrey)
+
+  #This variable is fixed and used as a reference to indicate the
+  #modules used (they are colours but the position within the vector is
+  #also relevant)
+  #centroid.labels <- substring(names(eigengenes$eigengenes),3)
+  if(!silent){
+    print("Module colors are")
+    print(sort(unique(net$moduleColors)))
+  }
+
+  #Step 4
+  k = length(eigengenes$eigengenes)
+  if(!silent)
+    cat("Working with",k,"modules/centroids\n")
+  #Centroids must be a matrix with as much colums as centroids,
+  #as much rows as samples
+  centroids = as.matrix(eigengenes$eigengenes)
+  colnames(centroids) = gsub("^ME","",colnames(centroids))
+
+  #Step 5
+  #For storage of all the partitions created during the iterations
+  partitions = list()
+  #A partition will be a list of as much elements as genes and for the
+  #i-th position it stores the index of the module the ith gene belongs
+  #to, and the color can be found in "centroid.labels"
+  #new.partition <- match(partition.in.colors, centroid.labels)
+  #names(new.partition) <- centroid.labels[new.partition]
+  partitions[[1]] = clusters
+
+  #kmeans.evolution <- list()
+  #kIMs <- getkIMs(tom.matrix,new.partition,length(centroid.labels))
+  #kIMsWGCNA <- getkIMsFromWGCNA(expr.data,partition.in.colors,beta)
+  #kMEs <- getkMEs(expr.data,new.partition,centroids)
+  #kmeans.evolution[[1]] <- list(exchanged.genes=0,kMEs=kMEs,kIMs=kIMsWGCNA)
+
+  #Launch the iterations
+  #min.exchanged.genes = 20
+  allgchanges = NULL
+  exchanged.genes = min.exchanged.genes + 1
+  iteration = 1
+
+  new.clusters = NULL
+  while(exchanged.genes > min.exchanged.genes & iteration <= n.iterations){
+    if(!silent)
+      cat("k-means iteration:",iteration,"and",(n.iterations - iteration),
+          "iterations left\n")
+    cors = WGCNA::cor(x=expr.data,y=centroids)
+    if(net.type == "signed")
+      cors = 0.5 + 0.5 * cors
+    else
+      cors = 0.5 * (1 + cors)
+    new.clusters = unlist(apply(cors,1,function(x){
+      which.max(x)
+    }))
+
+    if(!silent)
+      print(sum(is.na(expr.data)))
+
+    if(!silent)
+      print(table(new.clusters))
+    new.clusters = colnames(centroids)[new.clusters]
+    names(new.clusters) = geneNames
+
+    if(!silent)
+      cat("We got",length(new.clusters),"genes in partition\n")
+    if(!silent)
+      cat("We got",length(unique(new.clusters)),"modules in partition\n")
+    #print(unique(new.clusters))
+    partitions[[iteration + 1]] <- new.clusters
+    #Get the control values for the new partition
+    exchanged.genes <- length(getExchangedGenes(partitions[[iteration]],
+                                                partitions[[iteration + 1]]))
+    if(!silent)
+      cat(exchanged.genes,
+          "genes moved to another module by k-means\n")
+    if(!silent)
+      cat("We have",ncol(expr.data),"genes in expr.data\n")
+    centroids <- getNewCentroids(expr.data,new.clusters)
+    if(!silent)
+      cat("We got",ncol(centroids),"new centroids\n")
+
+
+    iteration = iteration + 1
+    allgchanges = c(allgchanges,exchanged.genes)
+  }
+
+  if(!silent)
+    cat("We finish with",(iteration-1),"iterations\n")
+  if(iteration > 1){
+    if(!silent)
+      cat("Last number of gene changes where",exchanged.genes,"\n")
+
+    net = NULL
+    net$moduleColors = WGCNA::labels2colors(new.clusters)
+    names(net$moduleColors) = geneNames
+    names(net)
+    net$MEs = WGCNA::moduleEigengenes(expr.data,
+                                      net$moduleColors,
+                                      excludeGrey=excludeGrey)$eigengenes
+
+    net$partitions = partitions
+    net$cgenes = allgchanges
+  }
+
+  print("The (Fast) k-means algorithm finished correctly")
+  return(net)
+}
+
 
 
 getNewCentroids <- function(expr.data,partition.in.colors){
@@ -1747,8 +1907,8 @@ getAndPlotNetworkLong <- function(expr.data,beta,
 corDistance = function(a,b,signed=TRUE,cor.type="pearson"){
   if(cor.type=="pearson"){
     if(signed)
-      #return(0.5 + 0.5*WGCNA::corFast(x=a,y=b)) #(Note they are equivalent)
-      return(0.5 * (1 + stats::cor(a,b,use="pairwise.complete.obs")))
+      return(0.5 + 0.5*WGCNA::cor(x=a,y=b)) #(Note they are equivalent)
+      #return(0.5 * (1 + stats::cor(a,b,use="pairwise.complete.obs")))
     return(abs(stats::cor(a,b)))
   }else{
     if(signed)
