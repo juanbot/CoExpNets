@@ -986,12 +986,12 @@ getDownstreamNetwork = function(tissue="mytissue",
                              silent=silent)
   }else{
     outnet = applyKMeans(tissue=tissue,
-                             n.iterations=n.iterations,
-                             net.file=net.and.tom$net,
-                             expr.data=expr.data,
-                             excludeGrey=excludeGrey,
-                             min.exchanged.genes = min.exchanged.genes,
-                             silent=silent)
+                         n.iterations=n.iterations,
+                         net.file=net.and.tom$net,
+                         expr.data=expr.data,
+                         excludeGrey=excludeGrey,
+                         min.exchanged.genes = min.exchanged.genes,
+                         silent=silent)
 
   }
 
@@ -1406,15 +1406,15 @@ applyKMeans <- function(tissue,
 }
 
 applyFastKMeans = function(tissue,
-                        net.file,
-                        expr.data,
-                        n.iterations=20,
-                        debug=F,
-                        n.debug=500,
-                        net.type="signed",
-                        min.exchanged.genes=20,
-                        excludeGrey=F,
-                        silent=T){
+                           net.file,
+                           expr.data,
+                           n.iterations=20,
+                           debug=F,
+                           n.debug=500,
+                           net.type="signed",
+                           min.exchanged.genes=20,
+                           excludeGrey=F,
+                           silent=T){
 
   if(typeof(expr.data) == "character")
     expr.data <- readRDS(expr.data)
@@ -1441,9 +1441,14 @@ applyFastKMeans = function(tissue,
   clusters = net$moduleColors
   geneNames = names(clusters)
   #Step 3
+  tic()
+  if(!silent)
+    cat("Getting MEs\n")
   eigengenes = WGCNA::moduleEigengenes(expr.data,net$moduleColors,
                                        excludeGrey=excludeGrey)
-
+  if(!silent)
+    cat("Done\n")
+  toc()
   #This variable is fixed and used as a reference to indicate the
   #modules used (they are colours but the position within the vector is
   #also relevant)
@@ -1489,6 +1494,9 @@ applyFastKMeans = function(tissue,
     if(!silent)
       cat("k-means iteration:",iteration,"and",(n.iterations - iteration),
           "iterations left\n")
+    tic()
+    if(!silent)
+      cat("Getting correlation gene-centroid\n")
     cors = WGCNA::cor(x=expr.data,y=centroids)
     if(net.type == "signed")
       cors = 0.5 + 0.5 * cors
@@ -1497,7 +1505,9 @@ applyFastKMeans = function(tissue,
     new.clusters = unlist(apply(cors,1,function(x){
       which.max(x)
     }))
-
+    if(!silent)
+      cat("Done\n")
+    toc()
     if(!silent)
       print(sum(is.na(expr.data)))
 
@@ -1520,7 +1530,13 @@ applyFastKMeans = function(tissue,
           "genes moved to another module by k-means\n")
     if(!silent)
       cat("We have",ncol(expr.data),"genes in expr.data\n")
+    tic()
+    if(!silent)
+      cat("Getting new centroids\n")
     centroids <- getNewCentroids(expr.data,new.clusters)
+    if(!silent)
+      cat("Done\n")
+    toc()
     if(!silent)
       cat("We got",ncol(centroids),"new centroids\n")
 
@@ -1539,9 +1555,15 @@ applyFastKMeans = function(tissue,
     net$moduleColors = WGCNA::labels2colors(new.clusters)
     names(net$moduleColors) = geneNames
     names(net)
+    tic()
+    if(!silent)
+      cat("Getting MEs\n")
     net$MEs = WGCNA::moduleEigengenes(expr.data,
                                       net$moduleColors,
                                       excludeGrey=excludeGrey)$eigengenes
+    if(!silent)
+      cat("Done\n")
+    toc()
 
     net$partitions = partitions
     net$cgenes = allgchanges
@@ -1644,7 +1666,7 @@ getAndPlotNetworkLong <- function(expr.data,beta,
                                   r.sq.cutoff = 0.8,
                                   cor.type="pearson",
                                   silent=T){
-
+  library(tictoc)
   net <- NULL
 
   if(typeof(expr.data) == "character"){
@@ -1742,8 +1764,9 @@ getAndPlotNetworkLong <- function(expr.data,beta,
     corOptions = "use = 'p', method = 'spearman'"
   else
     corOptions = "use = 'p'"
-
+  tic()
   adjacency = WGCNA::adjacency(expr.data, power = beta, type = net.type, corOptions = corOptions)
+  toc()
   if(!silent)
     print("Created")
   if(!silent)
@@ -1783,8 +1806,13 @@ getAndPlotNetworkLong <- function(expr.data,beta,
   # Clustering using TOM
   # Call the hierarchical clustering function that makes the clustering
   # dendrogram to grow until the leaves are genes
-
+  if(!silent)
+    cat("Calling flashClust\n")
+  tic()
   geneTree = flashClust::flashClust(as.dist(dissTOM), method = "average")
+  toc()
+  if(!silent)
+    cat("Done\n")
 
   print("Now the genetree")
   print(geneTree)
@@ -1794,7 +1822,11 @@ getAndPlotNetworkLong <- function(expr.data,beta,
 
   n.mods = 0
   deep.split = 2
+  tic()
   while(n.mods < 10 & deep.split < 5){
+    if(!silent)
+      cat("Calling dynamicTreeCut with",n.mods,"n.mods and", deep.split,"deep.split\n")
+
     dynamicMods = dynamicTreeCut::cutreeDynamic(dendro = geneTree, distM = dissTOM,
                                                 deepSplit = deep.split,
                                                 pamRespectsDendro = F,
@@ -1802,8 +1834,11 @@ getAndPlotNetworkLong <- function(expr.data,beta,
                                                 minClusterSize = min.cluster.size)
     n.mods = length(table(dynamicMods))
     deep.split = deep.split + 1
-  }
+    if(!silent)
+      cat("Done\n")
 
+  }
+  toc()
   if(n.mods <= 3){
     print(table(dynamicMods))
     print(paste0("There are only ",n.mods," modules in the network. Makes no sense to continue"))
@@ -1819,19 +1854,39 @@ getAndPlotNetworkLong <- function(expr.data,beta,
     print(table(dynamicColors))
 
   # Calculate eigengenes
+  if(!silent)
+    cat("Getting eigengenes\n")
+  tic()
   MEList = WGCNA::moduleEigengenes(expr.data,
                                    colors = dynamicColors,
                                    excludeGrey=excludeGrey)
+  toc()
+  if(!silent)
+    cat("Done\n")
+
   MEs = MEList$eigengenes
   # Calculate dissimilarity of module eigengenes
   MEDiss = 1-cor(MEs,use = "pairwise.complete.obs")
   # Cluster module eigengenes
+  tic()
+  if(!silent)
+    cat("Calling flashClust on eigengenes\n")
   METree = flashClust::flashClust(as.dist(MEDiss), method = "average")
+  toc()
+  if(!silent)
+    cat("Done\n")
 
   MEDissThres = 0.1 #### MERGING THRESHOLD
   # Call an automatic merging function
+  if(!silent)
+    cat("Merging close modules\n")
+  tic()
   merge = WGCNA::mergeCloseModules(expr.data, dynamicColors, cutHeight = MEDissThres,
                                    verbose = 3, unassdColor="grey",getNewUnassdME = FALSE)
+  toc()
+  if(!silent)
+    cat("Done\n")
+
   # The merged module colors
   mergedColors = CoExpNets::dropGreyModule(merge$colors)
   # Eigengenes of the new merged modules
@@ -1899,6 +1954,9 @@ getAndPlotNetworkLong <- function(expr.data,beta,
     return(list(net=net,tom=(1 - dissTOM)))
   }else
     return(net)
+  if(!silent)
+    cat("Done with getAndPlotNetworkLong\n")
+
 }
 
 
@@ -1908,7 +1966,7 @@ corDistance = function(a,b,signed=TRUE,cor.type="pearson"){
   if(cor.type=="pearson"){
     if(signed)
       return(0.5 + 0.5*WGCNA::cor(x=a,y=b)) #(Note they are equivalent)
-      #return(0.5 * (1 + stats::cor(a,b,use="pairwise.complete.obs")))
+    #return(0.5 * (1 + stats::cor(a,b,use="pairwise.complete.obs")))
     return(abs(stats::cor(a,b)))
   }else{
     if(signed)
@@ -1992,7 +2050,7 @@ getMM = function(net=NULL,
   }
 
   if(!is.null(mm.data))
-      expr.data = expr.data.file
+    expr.data = expr.data.file
 
   if(is.null(genes))
     genes = names(net$moduleColors)

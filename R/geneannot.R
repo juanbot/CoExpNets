@@ -193,7 +193,8 @@ reportOnGenes = function(tissue,
                          which.one="signedrnaseq",
                          alt.probes=NULL,
                          ens.correction=NULL,
-                         gwases=NULL){
+                         gwases=NULL,
+                         alt.expr.data=NULL){
 
   genes = unique(genes)
 
@@ -201,7 +202,15 @@ reportOnGenes = function(tissue,
   net = getNetworkFromTissue(tissue=tissue,which.one=which.one)
   netf = getNetworkFromTissue(tissue=tissue,which.one=which.one,only.file = T)
   names(net$moduleColors) =  fromAny2Ensembl(names(net$moduleColors))
-  expr.dataf = getExprDataFromTissue(tissue=tissue,which.one=which.one,only.file = T)
+  if(which.one == "new"){
+    if(is.null(alt.expr.data))
+      stop("We need the expression data rds object at alt.expr.data\n")
+    expr.dataf = getExprDataFromTissue(tissue=alt.expr.data,
+                                         which.one=which.one,
+                                         only.file = T)
+  }else
+    expr.dataf = getExprDataFromTissue(tissue=tissue,which.one=which.one,only.file = T)
+
   if(expr.dataf != "Nonspecified"){
     expr.data = readRDS(expr.dataf)
     print(head(colnames(expr.data)))
